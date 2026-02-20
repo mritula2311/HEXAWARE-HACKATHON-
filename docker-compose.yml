@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: maverickai
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-maverickai_pass}
+      POSTGRES_DB: maverickai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maverickai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB (Agent Memory & Logs)
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # Ollama LLM Server
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+
+  # n8n Workflow Engine
+  n8n:
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      - WEBHOOK_URL=http://n8n:5678
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # FastAPI Backend
+  fastapi:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://maverickai:${DB_PASSWORD:-maverickai_pass}@postgres:5432/maverickai_db
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook
+      - SECRET_KEY=${SECRET_KEY:-maverickai-secret-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      ollama:
+        condition: service_started
+
+  # Next.js Frontend
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - fastapi
+
+volumes:
+  postgres_data:
+  mongo_data:
+  ollama_data:
+  n8n_data:
+  

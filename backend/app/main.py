@@ -1,0 +1,63 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
+from app.database import create_tables, SessionLocal
+
+# Import routers
+from app.api.routes import auth, freshers, schedules, assessments, analytics, agents, workflows, reports, curricula, admin
+
+app = FastAPI(
+    title="MaverickAI API",
+    description="Multi-Agent Platform for Enterprise Fresher Onboarding and Training Management",
+    version="1.0.0",
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS.split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount routers
+app.include_router(auth.router, prefix="/api/v1/auth")
+app.include_router(freshers.router, prefix="/api/v1/freshers")
+app.include_router(schedules.router, prefix="/api/v1/schedules")
+app.include_router(assessments.router, prefix="/api/v1/assessments")
+app.include_router(analytics.router, prefix="/api/v1/analytics")
+app.include_router(agents.router, prefix="/api/v1/agents")
+app.include_router(workflows.router, prefix="/api/v1/workflows")
+app.include_router(reports.router, prefix="/api/v1/reports")
+app.include_router(curricula.router, prefix="/api/v1/curricula")
+app.include_router(admin.router, prefix="/api/v1/admin")
+
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "service": "MaverickAI API", "version": "1.0.0"}
+
+
+@app.get("/")
+async def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
+
+
+@app.on_event("startup")
+async def startup():
+    print("[START] MaverickAI Backend starting...")
+    create_tables()
+    print("[OK] Database tables created")
+
+    # Auto-seed on first run
+    db = SessionLocal()
+    try:
+        from app.seed import seed_database
+        seed_database(db)
+    finally:
+        db.close()
+
+    print("[READY] MaverickAI API ready at http://localhost:8000")
+    print("[DOCS] Swagger docs at http://localhost:8000/docs")

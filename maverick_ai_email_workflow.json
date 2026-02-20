@@ -1,0 +1,71 @@
+{
+    "name": "MaverickAI Email Reports",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "send-report-email",
+                "options": {}
+            },
+            "name": "Report Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "functionCode": "return [{\n  json: {\n    subject: `New Report Generated: ${items[0].json.title}`,\n    text: `Here is your latest MaverickAI Intelligence Report:\n\nSUMMARY:\n${items[0].json.summary}\n\nHIGHLIGHTS:\n${items[0].json.highlights.map(h => '- ' + h).join('\\n')}\n\nRECOMMENDATIONS:\n${items[0].json.recommendations.map(r => '> ' + r).join('\\n')}\n\nGenerated on: ${items[0].json.generated_at}`\n  }\n}];"
+            },
+            "name": "Format Email Body",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "reports@maverick.ai",
+                "toEmail": "manager@maverick.ai",
+                "subject": "={{$node[\"Format Email Body\"].json[\"subject\"]}}",
+                "text": "={{$node[\"Format Email Body\"].json[\"text\"]}}",
+                "options": {}
+            },
+            "name": "Send Email",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Report Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Format Email Body",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Email Body": {
+            "main": [
+                [
+                    {
+                        "node": "Send Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

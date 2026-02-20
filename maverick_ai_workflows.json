@@ -1,0 +1,135 @@
+{
+    "name": "MaverickAI Core Workflows",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "value": 6
+                        }
+                    ]
+                }
+            },
+            "name": "Daily Schedule Trigger",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://fastapi:8000/api/v1/onboarding/generate",
+                "method": "POST",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Trigger Onboarding Agent",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "assessment-submission",
+                "options": {}
+            },
+            "name": "Assessment Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://fastapi:8000/api/v1/workflows/submit",
+                "method": "POST",
+                "options": {}
+            },
+            "name": "Call Assessment Agent",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                500,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "weeks",
+                            "value": 1
+                        }
+                    ]
+                }
+            },
+            "name": "Weekly Report Trigger",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                250,
+                700
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://fastapi:8000/api/v1/reports/generate/overall",
+                "method": "POST",
+                "options": {}
+            },
+            "name": "Generate Management Report",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                500,
+                700
+            ]
+        }
+    ],
+    "connections": {
+        "Daily Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger Onboarding Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Assessment Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Call Assessment Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Weekly Report Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Management Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
