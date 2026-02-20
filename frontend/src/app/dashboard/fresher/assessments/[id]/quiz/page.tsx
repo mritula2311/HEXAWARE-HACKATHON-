@@ -104,7 +104,7 @@ export default function QuizSubmissionPage() {
   };
 
   const handleNext = () => {
-    if (assessment && currentQuestionIndex < assessment.questions.length - 1) {
+    if (assessment && assessment.questions && currentQuestionIndex < assessment.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
@@ -195,8 +195,9 @@ export default function QuizSubmissionPage() {
     );
   }
 
-  const currentQuestion = assessment.questions[currentQuestionIndex];
-  const totalQuestions = assessment.questions.length;
+  const questions = assessment.questions ?? [];
+  const currentQuestion = questions[currentQuestionIndex];
+  const totalQuestions = questions.length;
   const answeredCount = Object.keys(answers).length;
   const progressPercentage = (answeredCount / totalQuestions) * 100;
 
@@ -239,7 +240,7 @@ export default function QuizSubmissionPage() {
           <div className="bg-white rounded-lg shadow-md p-4 sticky top-4">
             <h3 className="font-semibold text-gray-800 mb-3">Question Navigator</h3>
             <div className="grid grid-cols-5 lg:grid-cols-4 gap-2">
-              {assessment.questions.map((q, index) => {
+              {questions.map((q, index) => {
                 const isAnswered = answers[q.id] !== undefined;
                 const isCurrent = index === currentQuestionIndex;
                 return (

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import api from '@/lib/api-service';
+import { api } from '@/lib/api-service';
 import { cn } from '@/lib/utils';
 
 export default function SchedulePage() {
