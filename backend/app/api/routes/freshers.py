@@ -5,6 +5,7 @@ from app.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.fresher import Fresher, Skill, Achievement
+from app.models.badge import Badge, FresherBadge
 from app.models.schedule import Schedule, ScheduleItem
 from app.models.assessment import Assessment, Submission
 
@@ -94,14 +95,12 @@ def get_training_status(fresher_id: str, db: Session = Depends(get_db), current_
         raise HTTPException(status_code=404, detail="Fresher not found")
     subs = db.query(Submission).filter(Submission.user_id == fresher.user_id).all()
     quiz_done = any(s.submission_type == "quiz" and s.status == "completed" for s in subs)
-    code_done = any(s.submission_type == "code" and s.status == "completed" for s in subs)
+    assign_done = any(s.submission_type == "assignment" and s.status == "completed" for s in subs)
     return {
         "quiz_status": "completed" if quiz_done else "not_started",
         "quiz_score": next((s.score for s in subs if s.submission_type == "quiz" and s.score), None),
-        "coding_challenge_status": "completed" if code_done else "not_started",
-        "coding_score": next((s.score for s in subs if s.submission_type == "code" and s.score), None),
-        "assignment_status": "not_started",
-        "assignment_score": None,
+        "assignment_status": "completed" if assign_done else "not_started",
+        "assignment_score": next((s.score for s in subs if s.submission_type == "assignment" and s.score), None),
         "certification_status": "not_started",
         "certification_name": None,
     }
@@ -112,7 +111,6 @@ def get_workflow_status(fresher_id: str, db: Session = Depends(get_db), current_
     return {
         "profile_updated": True,
         "daily_quiz_completed": False,
-        "coding_challenge_submitted": False,
         "assignment_submitted": False,
         "certification_completed": False,
         "last_updated": "2026-02-14T10:00:00Z",
@@ -154,9 +152,16 @@ def get_assessment_evaluations(fresher_id: str, db: Session = Depends(get_db), c
                 print(f"[DEBUG] Error parsing feedback for submission {sub.id}: {e}")
                 pass
         
+        # Sanitize lists to ensure all items are strings (LLM may return objects)
+        def clean_list(l):
+            if not isinstance(l, list): return []
+            return [str(v) if isinstance(v, (dict, list)) else str(v) for v in l]
+        
         # Calculate time ago
-        from datetime import datetime
-        time_diff = datetime.utcnow() - sub.submitted_at
+        from datetime import datetime, timezone
+        now_utc = datetime.now(timezone.utc)
+        submitted = sub.submitted_at if sub.submitted_at.tzinfo else sub.submitted_at.replace(tzinfo=timezone.utc)
+        time_diff = now_utc - submitted
         if time_diff.days > 0:
             time_ago = f"{time_diff.days}d ago"
         elif time_diff.seconds // 3600 > 0:
@@ -173,11 +178,11 @@ def get_assessment_evaluations(fresher_id: str, db: Session = Depends(get_db), c
             "status": sub.status,
             "time_ago": time_ago,
             "feedback": {
-                "overall": feedback_obj.get("overall_comment", "Assessment evaluated successfully"),
-                "strengths": feedback_obj.get("strengths", []),
-                "weaknesses": feedback_obj.get("weaknesses", []),
-                "suggestions": feedback_obj.get("suggestions", []),
-                "risk_level": feedback_obj.get("risk_level", "low"),
+                "overall": str(feedback_obj.get("overall_comment", feedback_obj.get("overall_assessment", "Assessment evaluated successfully"))),
+                "strengths": clean_list(feedback_obj.get("strengths", [])),
+                "weaknesses": clean_list(feedback_obj.get("weaknesses", feedback_obj.get("areas_for_improvement", []))),
+                "suggestions": clean_list(feedback_obj.get("suggestions", feedback_obj.get("developmental_recommendations", []))),
+                "risk_level": str(feedback_obj.get("risk_level", "low")),
                 "test_score": feedback_obj.get("test_score"),
                 "style_score": feedback_obj.get("style_score"),
             }
@@ -255,6 +260,7 @@ def _build_dashboard(db: Session, fresher: Fresher, user: User) -> dict:
     from datetime import date
     skills = db.query(Skill).filter(Skill.fresher_id == fresher.id).all()
     achievements = db.query(Achievement).filter(Achievement.fresher_id == fresher.id).all()
+    fresher_badges = db.query(FresherBadge).filter(FresherBadge.fresher_id == fresher.id).all()
     today = date.today().isoformat()
     schedule = db.query(Schedule).filter(Schedule.fresher_id == fresher.id, Schedule.schedule_date == today).first()
     items = []
@@ -276,7 +282,11 @@ def _build_dashboard(db: Session, fresher: Fresher, user: User) -> dict:
             }
             for si in raw_items
         ]
-    raw_assessments = db.query(Assessment).filter(Assessment.is_active == True).all()
+    # ONLY quiz and assignment assessments (code challenges removed)
+    raw_assessments = db.query(Assessment).filter(
+        Assessment.is_active == True,
+        Assessment.assessment_type.in_(["quiz", "assignment"])
+    ).all()
     upcoming = [
         {
             "id": str(a.id),
@@ -293,30 +303,49 @@ def _build_dashboard(db: Session, fresher: Fresher, user: User) -> dict:
     subs = db.query(Submission).filter(Submission.user_id == user.id).order_by(Submission.submitted_at.desc()).all()
     passed = sum(1 for s in subs if s.pass_status == "pass")
 
-    # Dynamic training status
+    # Dynamic training status - ONLY quiz and assignment (code removed)
     quiz_sub = next((s for s in subs if s.submission_type == "quiz"), None)
-    code_sub = next((s for s in subs if s.submission_type == "code"), None)
     assign_sub = next((s for s in subs if s.submission_type == "assignment"), None)
 
-    quiz_obj = next((a for a in raw_assessments if a.assessment_type == "quiz"), None)
-    code_obj = next((a for a in raw_assessments if a.assessment_type == "code"), None)
-    assign_obj = next((a for a in raw_assessments if a.assessment_type == "assignment"), None)
+    # Direct DB queries to ensure correct assessment types (Python quiz, Software assignment)
+    quiz_obj = db.query(Assessment).filter(
+        Assessment.is_active == True,
+        Assessment.assessment_type == "quiz",
+        Assessment.title.ilike("%python%")
+    ).order_by(Assessment.id.asc()).first()
+    if not quiz_obj:
+        quiz_obj = db.query(Assessment).filter(
+            Assessment.is_active == True,
+            Assessment.assessment_type == "quiz"
+        ).order_by(Assessment.id.asc()).first()
+    
+    assign_obj = db.query(Assessment).filter(
+        Assessment.is_active == True,
+        Assessment.assessment_type == "assignment",
+        Assessment.title.ilike("%software%")
+    ).order_by(Assessment.id.asc()).first()
+    if not assign_obj:
+        assign_obj = db.query(Assessment).filter(
+            Assessment.is_active == True,
+            Assessment.assessment_type == "assignment"
+        ).order_by(Assessment.id.asc()).first()
+
+    # Certification progress (first certification record if exists)
+    from app.models.certification import Certification
+    cert_obj = db.query(Certification).filter(Certification.fresher_id == fresher.id).order_by(Certification.id.asc()).first()
 
     training_status = {
         "quiz_status": str(quiz_sub.status) if quiz_sub else "not_started",
         "quiz_score": quiz_sub.score if quiz_sub else None,
         "quiz_id": str(quiz_obj.id) if quiz_obj else "",
-        "quiz_title": quiz_obj.title if quiz_obj else "Daily Quiz",
-        "coding_challenge_status": "completed" if code_sub and code_sub.status == "completed" else ("in_progress" if code_sub else "not_started"),
-        "coding_score": code_sub.score if code_sub else None,
-        "coding_id": str(code_obj.id) if code_obj else "",
-        "coding_title": code_obj.title if code_obj else "Coding Challenge",
+        "quiz_title": quiz_obj.title if quiz_obj else "Python Quiz",
         "assignment_status": "submitted" if assign_sub else "pending",
         "assignment_score": assign_sub.score if assign_sub else None,
         "assignment_id": str(assign_obj.id) if assign_obj else "",
-        "assignment_title": assign_obj.title if assign_obj else "Assignment",
-        "certification_status": "not_started",
-        "certification_name": "AWS Cloud Practitioner",
+        "assignment_title": assign_obj.title if assign_obj else "Software Assignment",
+        "certification_status": cert_obj.status if cert_obj else "not_started",
+        "certification_name": cert_obj.name if cert_obj else "AWS Cloud Practitioner",
+        "certification_progress": cert_obj.progress if cert_obj else 0.0,
     }
 
     return {
@@ -356,6 +385,19 @@ def _build_dashboard(db: Session, fresher: Fresher, user: User) -> dict:
             }
             for a in achievements
         ],
+        "badges": [
+            {
+                "id": str(fb.badge.id),
+                "name": fb.badge.name,
+                "description": fb.badge.description,
+                "skill_name": fb.badge.skill_name,
+                "color": fb.badge.color,
+                "icon_url": fb.badge.icon_url,
+                "score_achieved": fb.score_achieved,
+                "earned_at": str(fb.earned_at) if fb.earned_at else "",
+            }
+            for fb in fresher_badges
+        ],
         "agent_activity": [
             {"id": "1", "agent": "Onboarding Agent", "task": "Generating personalized schedule", "status": "idle", "last_run": "10 mins ago"},
             {"id": "2", "agent": "Assessment Agent", "task": "Grading Python Quiz", "status": "idle", "last_run": "2 hours ago"},
@@ -385,7 +427,6 @@ def _build_dashboard(db: Session, fresher: Fresher, user: User) -> dict:
         "workflow_status": {
             "profile_updated": True,
             "daily_quiz_completed": quiz_sub is not None,
-            "coding_challenge_submitted": code_sub is not None,
             "assignment_submitted": assign_sub is not None,
             "certification_completed": False,
             "last_updated": "2026-02-14T10:00:00Z",

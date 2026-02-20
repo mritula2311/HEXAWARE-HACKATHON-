@@ -1,5 +1,6 @@
 import json
-from datetime import datetime, timezone
+import random
+from datetime import datetime, timezone, date
 from app.agents.base import BaseAgent
 from app.models.assessment import Assessment, Submission
 from app.config import settings
@@ -10,6 +11,37 @@ class AssessmentAgent(BaseAgent):
 
     def __init__(self):
         super().__init__(model_name=settings.OLLAMA_CODE_MODEL)
+
+    def _extract_json_from_llm_response(self, llm_response: str) -> dict:
+        """Extract JSON from LLM response, handling markdown code blocks."""
+        try:
+            response_text = llm_response.strip()
+            
+            # Remove markdown code blocks
+            if "```json" in response_text:
+                start = response_text.find("```json") + 7
+                end = response_text.find("```", start)
+                if end > start:
+                    response_text = response_text[start:end].strip()
+            elif "```" in response_text:
+                start = response_text.find("```") + 3
+                end = response_text.find("```", start)
+                if end > start:
+                    response_text = response_text[start:end].strip()
+            
+            # Extract JSON object
+            json_start = response_text.find("{")
+            json_end = response_text.rfind("}") + 1
+            if json_start >= 0 and json_end > json_start:
+                response_text = response_text[json_start:json_end]
+            
+            parsed = json.loads(response_text)
+            print(f"[AssessmentAgent] ✓ Successfully parsed LLM JSON response")
+            return parsed
+        except Exception as e:
+            print(f"[AssessmentAgent] ✗ JSON parse error: {e}")
+            print(f"[AssessmentAgent] Raw response: {llm_response[:200]}...")
+            return {}
 
     def execute(self, db, submission: Submission):
         assessment = db.query(Assessment).filter(Assessment.id == submission.assessment_id).first()
@@ -37,6 +69,21 @@ class AssessmentAgent(BaseAgent):
         return result
 
     def _grade_quiz(self, db, submission: Submission, assessment: Assessment):
+        def normalize_answer(value):
+            text = str(value or "").strip().lower()
+            if text in ["true", "t", "yes", "1"]:
+                return "true"
+            if text in ["false", "f", "no", "0"]:
+                return "false"
+            return text
+
+        def select_daily_questions(question_list, count, assessment_id):
+            if not question_list or len(question_list) <= count:
+                return question_list
+            day_seed = int(date.today().strftime("%Y%m%d")) + int(assessment_id)
+            rng = random.Random(day_seed)
+            return rng.sample(question_list, count)
+
         # Parse answers
         answers = {}
         if submission.answers:
@@ -53,19 +100,43 @@ class AssessmentAgent(BaseAgent):
             except Exception:
                 pass
 
+        if assessment.assessment_type == "quiz":
+            questions = select_daily_questions(questions, 5, assessment.id)
+
         # Auto-grade against correct answers
         total_points = 0
         earned_points = 0
         incorrect_questions = []  # Store full question details for better feedback
         
-        for q in questions:
-            q_id = q.get("id", "")
+        for q_index, q in enumerate(questions):
+            q_id_raw = q.get("id", "")
+            q_id = str(q_id_raw).strip()
             points = q.get("points", 10)
             total_points += points
             correct = q.get("correct_answer", "")
-            user_answer = answers.get(q_id, "")
+
+            candidate_keys = [
+                q_id_raw,
+                q_id,
+                f"q{q_index + 1}",
+                str(q_index),
+                str(q_index + 1),
+            ]
+
+            user_answer = ""
+            matched_key = None
+            for key in candidate_keys:
+                if key in answers:
+                    user_answer = answers.get(key, "")
+                    matched_key = key
+                    break
+
+            print(
+                f"[AssessmentAgent][QUIZ] Q{q_index + 1} id={q_id} key={matched_key} "
+                f"user={normalize_answer(user_answer)!r} correct={normalize_answer(correct)!r}"
+            )
             
-            if str(user_answer).strip().lower() == str(correct).strip().lower():
+            if normalize_answer(user_answer) == normalize_answer(correct):
                 earned_points += points
             else:
                 # Track full question details for detailed explanations
@@ -85,38 +156,49 @@ class AssessmentAgent(BaseAgent):
             for iq in incorrect_questions[:5]
         ])
         
-        prompt = f"""Analyze this quiz performance and provide detailed feedback in JSON format:
+        prompt = f"""You are an expert assessment evaluator. Analyze this QUIZ performance and provide detailed feedback.
 
-Assessment: {assessment.title}
+=== QUIZ DETAILS ===
+Title: {assessment.title}
 Score: {earned_points}/{total_points} points ({score:.1f}%)
 Questions Answered: {len(answers)}/{len(questions)}
+Passing Score: {assessment.passing_score}
 
-Incorrect Questions:
-{incorrect_details if incorrect_details else "None - all correct!"}
+=== INCORRECT QUESTIONS ===
+{incorrect_details if incorrect_details else "All questions answered correctly!"}
 
-Provide a JSON response with:
+=== REQUIRED OUTPUT ===
+Provide ONLY a valid JSON object (no extra text) with these exact fields:
 {{
-  "overall_comment": "Brief encouraging assessment (1-2 sentences)",
-  "strengths": ["strength 1", "strength 2"],
-  "weaknesses": ["weakness 1", "weakness 2"],
-  "suggestions": ["actionable suggestion 1", "actionable suggestion 2"],
-  "missing_points": ["topic or concept missed 1", "topic or concept missed 2"],
-  "errors": ["For '[question]', you answered '[user answer]' but the correct answer is '[correct answer]' because [explanation]"],
-  "improvements": ["specific improvement 1", "specific improvement 2"],
-  "risk_level": "low/medium/high"
+  "overall_comment": "2-3 sentences giving encouraging but honest overall assessment",
+  "strengths": ["specific strength 1", "specific strength 2"],
+  "weaknesses": ["specific weakness 1", "specific weakness 2"],
+  "suggestions": ["actionable suggestion 1", "actionable suggestion 2", "actionable suggestion 3"],
+  "missing_points": ["concept/topic missed 1", "concept/topic missed 2"],
+  "errors": ["Clear explanation of error 1", "Clear explanation of error 2"],
+  "improvements": ["how to improve 1", "how to improve 2"],
+  "risk_level": "low" or "medium" or "high"
 }}
+
+IMPORTANT: Return ONLY the JSON object, nothing else.
 """
 
+        print(f"[AssessmentAgent] 📝 Requesting LLM feedback for QUIZ...")
         try:
             llm_feedback = self.call_llm(prompt)
-            feedback_data = json.loads(llm_feedback)
+            feedback_data = self._extract_json_from_llm_response(llm_feedback)
+            
+            if not feedback_data:
+                raise ValueError("Empty feedback data")
             
             # Ensure all required fields exist
             if not feedback_data.get("overall_comment"):
                 feedback_data["overall_comment"] = f"You scored {score:.1f}%. {'Excellent work!' if score >= 80 else 'Good effort!' if score >= 60 else 'Keep practicing!'}"
             
+            print(f"[AssessmentAgent] ✓ QUIZ LLM feedback parsed successfully, score: {score:.1f}%")
+            
         except Exception as e:
-            print(f"[AssessmentAgent] LLM feedback error: {e}, using fallback with individual LLM explanations")
+            print(f"[AssessmentAgent] ✗ QUIZ LLM feedback error: {e}, using fallback")
             
             # Generate personalized explanations using LLM individually for each error
             # This is slower but ensures high-quality feedback even if the main JSON generation failed
@@ -308,21 +390,53 @@ Provide a JSON response with:
             f"{tr.get('name')}: {tr.get('error') or 'Failed'} (expected {tr.get('expected')}, got {tr.get('actual')})"
             for tr in failed_tests[:3]
         ]
-        prompt = (
-            f"Review this {submission.language or 'python'} code and test results:\n"
-            f"Code:\n```\n{code[:2000]}\n```\n\n"
-            f"Test summary: {passed}/{total_tests} passed.\n"
-            f"Top failures: {', '.join(failure_summaries) if failure_summaries else 'None'}\n\n"
-            "Provide a JSON with: score (0-100), overall_comment, strengths, weaknesses, suggestions, "
-            "missing_points (what is missing), errors (why it failed), improvements (how to fix)."
-        )
+        
+        prompt = f"""You are an expert code reviewer. Analyze this CODING CHALLENGE submission.
+
+=== CODE SUBMISSION ===
+Language: {submission.language or 'python'}
+Code:
+```{submission.language or 'python'}
+{code[:2500]}
+```
+
+=== TEST RESULTS ===
+Tests Passed: {passed}/{total_tests}
+{f'Failed Tests: ' + ', '.join(failure_summaries) if failure_summaries else 'All tests passed!'}
+
+=== TEST DETAILS ===
+{json.dumps(test_results[:5], indent=2)}
+
+=== REQUIRED OUTPUT ===
+Provide ONLY a valid JSON object (no extra text) with these exact fields:
+{{
+  "score": 0-100 (code quality score),
+  "overall_comment": "2-3 sentences on code quality and correctness",
+  "strengths": ["specific code strength 1", "specific code strength 2"],
+  "weaknesses": ["specific code weakness 1", "specific code weakness 2"],
+  "suggestions": ["improvement suggestion 1", "improvement suggestion 2"],
+  "missing_points": ["missing feature/edge case 1", "missing feature/edge case 2"],
+  "errors": ["error explanation 1", "error explanation 2"],
+  "improvements": ["how to improve 1", "how to improve 2"]
+}}
+
+IMPORTANT: Return ONLY the JSON object, nothing else.
+"""
+        
+        print(f"[AssessmentAgent] 💻 Requesting LLM feedback for CODE (test score: {test_score:.1f}%)...")
         llm_response = self.call_llm(prompt)
 
         try:
-            review = json.loads(llm_response)
+            review = self._extract_json_from_llm_response(llm_response)
+            
+            if not review:
+                raise ValueError("Empty review data")
+            
             style_score = review.get("style_score", review.get("score", 75))
             overall_comment = review.get("overall_comment", review.get("overall", review.get("feedback", "Code reviewed successfully")))
-        except Exception:
+            print(f"[AssessmentAgent] ✓ CODE LLM feedback parsed, test_score: {test_score:.1f}%, quality_score: {style_score}")
+        except Exception as e:
+            print(f"[AssessmentAgent] ✗ CODE LLM parse error: {e}, using fallback")
             style_score = 75
             overall_comment = "Code reviewed successfully"
             review = {
@@ -381,36 +495,71 @@ Provide a JSON response with:
         }
 
     def _grade_assignment(self, db, submission: Submission, assessment: Assessment):
-        # Assignments are usually text reports, links, or open-ended answers
+        # Assignments are written reports and open-ended answers
         content = submission.code or ""
+        word_count = len(content.split())
+        char_count = len(content)
 
-        prompt = f"""
-        Review this assignment submission for '{assessment.title}'.
-        Description: {assessment.description}
-        Instructions: {assessment.instructions}
-        
-        Submission Content:
-        {content[:4000]}
-        
-        Provide a JSON review with:
-        - score (0-100)
-        - overall_comment
-        - strengths (list)
-        - weaknesses (list)
-        - suggestions (list)
-        - missing_points (list)
-        - errors (list)
-        - improvements (list)
-        - rubric_scores (object with categories like 'completeness', 'quality', 'understanding')
-        """
+        prompt = f"""You are an expert content evaluator. Review this WRITTEN ASSIGNMENT submission.
 
+=== ASSIGNMENT DETAILS ===
+Title: {assessment.title}
+Description: {assessment.description}
+Instructions: {assessment.instructions or 'Write a comprehensive response'}
+Max Score: {assessment.max_score}
+Passing Score: {assessment.passing_score}
+
+=== SUBMISSION CONTENT ===
+Word Count: {word_count}
+Character Count: {char_count}
+
+Content:
+{content[:4000]}
+
+=== EVALUATION CRITERIA ===
+Evaluate based on:
+1. Completeness - Does it address all aspects?
+2. Quality - Is content well-written and clear?
+3. Understanding - Does it show deep comprehension?
+4. Structure - Is it well-organized?
+5. Examples - Are there concrete examples?
+
+=== REQUIRED OUTPUT ===
+Provide ONLY a valid JSON object (no extra text) with these exact fields:
+{{
+  "score": 0-100 (overall score based on criteria above),
+  "overall_comment": "2-3 sentences giving overall assessment",
+  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+  "weaknesses": ["specific weakness 1", "specific weakness 2"],
+  "suggestions": ["improvement suggestion 1", "improvement suggestion 2", "improvement suggestion 3"],
+  "missing_points": ["missing topic/detail 1", "missing topic/detail 2"],
+  "errors": ["error or misconception 1", "error or misconception 2"],
+  "improvements": ["how to improve 1", "how to improve 2"],
+  "rubric_scores": {{
+    "completeness": 0-100,
+    "quality": 0-100,
+    "understanding": 0-100,
+    "structure": 0-100
+  }}
+}}
+
+IMPORTANT: Return ONLY the JSON object, nothing else.
+"""
+
+        print(f"[AssessmentAgent] 📄 Requesting LLM feedback for ASSIGNMENT ({word_count} words)...")
         llm_response = self.call_llm(prompt)
 
         try:
-            review = json.loads(llm_response)
+            review = self._extract_json_from_llm_response(llm_response)
+            
+            if not review:
+                raise ValueError("Empty review data")
+            
             score = review.get("score", 70)
             overall_comment = review.get("overall_comment", "Assignment received and reviewed.")
-        except Exception:
+            print(f"[AssessmentAgent] ✓ ASSIGNMENT LLM feedback parsed successfully, score: {score}")
+        except Exception as e:
+            print(f"[AssessmentAgent] ✗ ASSIGNMENT LLM parse error: {e}, using fallback")
             score = 70
             overall_comment = "Assignment reviewed successfully."
             review = {
@@ -451,6 +600,35 @@ Provide a JSON response with:
         submission.status = "completed"
         submission.feedback = json.dumps(clean_feedback)
         submission.graded_at = datetime.now(timezone.utc)
+
+        # Record assignment history version
+        try:
+            from app.models.certification import AssignmentHistory
+            from app.models.fresher import Fresher
+            fresher_obj = db.query(Fresher).filter(Fresher.user_id == submission.user_id).first()
+            fresher_id = fresher_obj.id if fresher_obj else None
+
+            latest = db.query(AssignmentHistory).filter(
+                AssignmentHistory.submission_id == submission.id
+            ).order_by(AssignmentHistory.version.desc()).first()
+            next_version = (latest.version + 1) if latest else 1
+            history = AssignmentHistory(
+                submission_id=submission.id,
+                fresher_id=fresher_id,
+                assessment_id=submission.assessment_id,
+                version=next_version,
+                content=submission.code,
+                status=submission.status,
+                score=submission.score,
+                feedback=submission.feedback,
+                submitted_at=submission.submitted_at,
+                graded_at=submission.graded_at,
+            )
+            if fresher_id:
+                db.add(history)
+        except Exception as e:
+            print(f"[AssessmentAgent] assignment history record failed: {e}")
+
         db.commit()
 
         return {

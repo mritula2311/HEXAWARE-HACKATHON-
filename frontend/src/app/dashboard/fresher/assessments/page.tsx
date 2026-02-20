@@ -13,7 +13,7 @@ export default function AssessmentsPage() {
   const [assessments, setAssessments] = useState<AssessmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'quiz' | 'code' | 'assignment'>('all');
+  const [filter, setFilter] = useState<'all' | 'quiz' | 'assignment'>('all');
 
   useEffect(() => {
     const loadAssessments = async () => {
@@ -55,8 +55,6 @@ export default function AssessmentsPage() {
   const handleStartAssessment = (assessment: AssessmentDetail) => {
     if (assessment.assessment_type === 'quiz') {
       router.push(`/dashboard/fresher/assessments/${assessment.id}/quiz`);
-    } else if (assessment.assessment_type === 'code') {
-      router.push(`/dashboard/fresher/assessments/${assessment.id}/code`);
     } else if (assessment.assessment_type === 'assignment') {
       router.push(`/dashboard/fresher/assessments/${assessment.id}/assignment`);
     }
@@ -66,8 +64,6 @@ export default function AssessmentsPage() {
     switch (type) {
       case 'quiz':
         return 'bg-blue-100 text-blue-700';
-      case 'code':
-        return 'bg-purple-100 text-purple-700';
       case 'assignment':
         return 'bg-green-100 text-green-700';
       default:
@@ -79,8 +75,6 @@ export default function AssessmentsPage() {
     switch (type) {
       case 'quiz':
         return '📝';
-      case 'code':
-        return '💻';
       case 'assignment':
         return '📄';
       default:
@@ -154,15 +148,6 @@ export default function AssessmentsPage() {
               }`}
           >
             📝 Quizzes
-          </button>
-          <button
-            onClick={() => setFilter('code')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${filter === 'code'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
-          >
-            💻 Coding Challenges
           </button>
           <button
             onClick={() => setFilter('assignment')}

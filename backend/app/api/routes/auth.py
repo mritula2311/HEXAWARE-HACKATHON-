@@ -19,7 +19,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer",
         "expires_in": 1440,
-        "user": _user_dict(user),
+        "user": _user_dict(user, db),
     }
 
 
@@ -46,7 +46,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer",
         "expires_in": 1440,
-        "user": _user_dict(user),
+        "user": _user_dict(user, db),
     }
 
 
@@ -55,10 +55,19 @@ def get_me(
     db: Session = Depends(get_db),
     current_user: User = Depends(__import__("app.api.deps", fromlist=["get_current_user"]).get_current_user),
 ):
-    return _user_dict(current_user)
+    return _user_dict(current_user, db)
 
 
-def _user_dict(user: User) -> dict:
+def _user_dict(user: User, db: Session) -> dict:
+    from app.models.fresher import Fresher
+
+    # Reuse the existing db session — never open a new SessionLocal() here
+    fresher_id = None
+    if user.role == "fresher":
+        fresher = db.query(Fresher).filter(Fresher.user_id == user.id).first()
+        if fresher:
+            fresher_id = fresher.id
+
     return {
         "id": str(user.id),
         "email": user.email,
@@ -67,6 +76,7 @@ def _user_dict(user: User) -> dict:
         "role": user.role,
         "department": user.department,
         "is_active": user.is_active,
+        "fresher_id": fresher_id,
         "created_at": str(user.created_at) if user.created_at else "",
         "updated_at": str(user.updated_at) if user.updated_at else "",
     }

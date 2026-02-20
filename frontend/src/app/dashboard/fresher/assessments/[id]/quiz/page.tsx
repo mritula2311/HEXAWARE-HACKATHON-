@@ -398,34 +398,6 @@ export default function QuizSubmissionPage() {
         </div>
       </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between items-center pt-6 border-t border-gray-200" style={{marginTop: '2rem'}}>
-              <button
-                onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
-                className="flex items-center gap-2 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ← Previous
-              </button>
-
-              {currentQuestionIndex === totalQuestions - 1 ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="px-8 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
-                >
-                  {submitting ? 'Submitting...' : 'Submit Quiz'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleNext}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Next →
-                </button>
-              )}
-            </div>
-
       {/* Confirmation Modal */}
       {showConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

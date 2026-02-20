@@ -14,8 +14,8 @@ router = APIRouter(tags=["Workflows"])
 @router.post("/submit")
 def submit_workflow(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     assessment_id = data.get("assessment_id")
-    submission_type = data.get("submission_type", "code")
-    code = data.get("code")
+    submission_type = data.get("submission_type", "quiz") 
+    code = data.get("code")  # May still be present in old requests, but ignored
     language = data.get("language", "python")
     answers = data.get("answers")
 
@@ -33,7 +33,7 @@ def submit_workflow(data: dict, db: Session = Depends(get_db), current_user: Use
         assessment_id=int(assessment_id),
         user_id=current_user.id,
         submission_type=submission_type,
-        code=code,
+        code=None,  # Code no longer used
         language=language,
         answers=json.dumps(answers) if answers else None,
         status="grading",
@@ -47,12 +47,25 @@ def submit_workflow(data: dict, db: Session = Depends(get_db), current_user: Use
 
     print(f"[SUBMIT] Created submission ID: {sub.id}, trace_id: {trace_id}, initial status: {sub.status}")
 
-    # Run grading synchronously (in production, this would be async via n8n)
+    # Run grading synchronously with specialized HR-focused evaluators
+    # Only quiz and assignment types supported (code challenges removed)
     try:
-        from app.agents.assessment_agent import AssessmentAgent
-        agent = AssessmentAgent()
-        print(f"[SUBMIT] Starting grading for submission {sub.id}...")
-        result = agent.execute(db, sub)
+        # Select appropriate evaluator based on assessment type
+        if assessment.assessment_type == "quiz":
+            from app.agents.quiz_evaluator_agent import QuizEvaluatorAgent
+            agent = QuizEvaluatorAgent()
+            print(f"[SUBMIT] Starting QUIZ evaluation for submission {sub.id} with HR assessment framework...")
+        elif assessment.assessment_type == "assignment":
+            from app.agents.assignment_evaluator_agent import AssignmentEvaluatorAgent
+            agent = AssignmentEvaluatorAgent()
+            print(f"[SUBMIT] Starting ASSIGNMENT evaluation for submission {sub.id} with professional document assessment...")
+        else:
+            # Fallback to generic agent for unknown types
+            from app.agents.assessment_agent import AssessmentAgent
+            agent = AssessmentAgent()
+            print(f"[SUBMIT] Starting grading for submission {sub.id} with generic agent (type: {assessment.assessment_type})...")
+        
+        result = agent.evaluate(db, sub, assessment)
         
         # Refresh submission to get updated status
         db.refresh(sub)
@@ -123,7 +136,7 @@ def get_workflow_status(trace_id: str, db: Session = Depends(get_db), current_us
                         return [str(v) if isinstance(v, (dict, list)) else v for v in l]
 
                     feedback = {
-                        "overall_comment": str(raw_feedback.get("overall_comment", raw_feedback.get("overall", raw_feedback.get("feedback", "")))),
+                        "overall_comment": str(raw_feedback.get("overall_comment", raw_feedback.get("overall_assessment", raw_feedback.get("overall", raw_feedback.get("feedback", ""))))),
                         "strengths": clean_list(raw_feedback.get("strengths", [])),
                         "weaknesses": clean_list(raw_feedback.get("weaknesses", [])),
                         "suggestions": clean_list(raw_feedback.get("suggestions", [])),
@@ -167,14 +180,16 @@ def get_workflow_status(trace_id: str, db: Session = Depends(get_db), current_us
         max_score_val = float(sub.max_score) if sub.max_score is not None else 100.0
         percentage_val = (score_val / max_score_val * 100) if max_score_val > 0 else 0.0
         
+        pass_status_val = str(sub.pass_status) if sub.pass_status in ["pass", "fail"] else None
+
         state = {
             "submission_id": str(sub.id),
             "assessment_id": str(sub.assessment_id),
             "score": score_val,
             "max_score": max_score_val,
             "percentage": percentage_val,
-            "pass_status": str(sub.pass_status) if sub.pass_status else "pending",
-            "passed": sub.pass_status == "pass",
+            "pass_status": pass_status_val,
+            "passed": pass_status_val == "pass",
             "feedback": make_safe(feedback),
             "test_results": make_safe(test_results),
             "rubric_scores": make_safe(feedback.get("rubric_scores", {

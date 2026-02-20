@@ -221,3 +221,108 @@ html {
     @apply bg-green-100 text-green-800 border-green-200;
   }
 }
+
+/* Landing page theme tokens */
+:root {
+  --lp-bg-start: #F0EFF8;
+  --lp-bg-end: #E8E8F5;
+  --lp-hero-amber-start: #E8A857;
+  --lp-hero-amber-end: #C97D3A;
+  --lp-announcement-start: #D4893A;
+  --lp-announcement-end: #E8A857;
+  --lp-primary: #1C1C1E;
+  --lp-primary-foreground: #FFFFFF;
+  --lp-secondary-border: #1C1C1E;
+  --lp-heading: #1A1A1A;
+  --lp-body: #4A4A4A;
+  --lp-accent: #6B6BCC;
+  --lp-card: #FFFFFF;
+  --lp-shadow: 0 20px 50px rgba(0,0,0,0.06);
+}
+
+/* Design tokens (Sarvam-inspired) */
+:root {
+  --color-bg: #F0EFF8;
+  --color-bg-secondary: #E8E8F5;
+  --color-surface: #FFFFFF;
+  --color-amber-light: #E8A857;
+  --color-amber-dark: #C97D3A;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #4A4A4A;
+  --color-text-muted: #8A8A9A;
+  --color-accent: #6B6BCC;
+  --color-accent-hover: #5555BB;
+  --color-border: #DDDDE8;
+  --color-shadow: rgba(0,0,0,0.07);
+  --color-btn-primary: #1C1C1E;
+  --color-btn-text: #FFFFFF;
+  --radius-card: 16px;
+  --radius-btn: 999px;
+}
+
+/* Shared helpers for landing/auth pages */
+.theme-bg {
+  background: linear-gradient(180deg, var(--color-bg), var(--color-bg-secondary));
+}
+.theme-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: 0 20px 50px var(--color-shadow);
+  border: 1px solid rgba(0,0,0,0.03);
+}
+.pill-btn {
+  border-radius: var(--radius-btn);
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+.pill-btn:hover { transform: translateY(-1px); }
+.input-soft {
+  background: #F2F2F7;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: 0.2s ease;
+}
+.input-soft:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(107,107,204,0.18);
+}
+.shadow-soft { box-shadow: 0 16px 40px var(--color-shadow); }
+.blob-amber {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(65% 60% at 70% 0%, rgba(232,168,87,0.55), rgba(201,125,58,0));
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+/* Dashboard theme bridge so existing components pick up the Sarvam palette */
+.dashboard-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--color-bg), var(--color-bg-secondary));
+  position: relative;
+  color: var(--color-text-primary);
+}
+.dashboard-shell .bg-white {
+  background: var(--color-surface) !important;
+  border-color: rgba(0,0,0,0.03) !important;
+  box-shadow: 0 16px 40px var(--color-shadow);
+}
+.dashboard-shell .border {
+  border-color: var(--color-border) !important;
+}
+.dashboard-shell .text-gray-900 { color: var(--color-text-primary) !important; }
+.dashboard-shell .text-gray-800 { color: var(--color-text-primary) !important; }
+.dashboard-shell .text-gray-700,
+.dashboard-shell .text-gray-600 { color: var(--color-text-secondary) !important; }
+.dashboard-shell .text-gray-500 { color: var(--color-text-muted) !important; }
+.dashboard-shell .btn-primary,
+.dashboard-shell .lp-btn-primary,
+.dashboard-shell .pill-btn,
+.dashboard-shell .bg-indigo-600,
+.dashboard-shell .bg-purple-600 { background: var(--color-btn-primary) !important; color: var(--color-btn-text) !important; }
+.dashboard-shell .lp-login-blob,
+.dashboard-shell .blob-amber { filter: blur(80px); opacity: 0.9; }
+.dashboard-shell .rounded-xl,
+.dashboard-shell .rounded-2xl { border-radius: 16px; }

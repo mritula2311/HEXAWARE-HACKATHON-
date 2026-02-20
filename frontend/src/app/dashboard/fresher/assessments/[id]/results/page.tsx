@@ -5,6 +5,20 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api-service';
 import { useAuth } from '@/lib/auth-context';
 
+/** Safely convert any value to a displayable string (handles objects from LLM output). */
+function toDisplayString(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    // Handle common LLM patterns like {area: "...", "specific topic": "..."}
+    const obj = val as Record<string, unknown>;
+    if (obj.area && obj['specific topic']) return `${obj.area}: ${obj['specific topic']}`;
+    if (obj.area) return String(obj.area);
+    return JSON.stringify(val);
+  }
+  return String(val);
+}
+
 interface WorkflowStatus {
   submission_id: string;
   status: string;
@@ -377,7 +391,7 @@ export default function ResultsPage() {
               <span>💬</span> Overall Assessment
             </h3>
             <p className="text-gray-700 leading-relaxed">
-              {result.feedback.overall_comment}
+              {toDisplayString(result.feedback.overall_comment)}
             </p>
           </div>
 
@@ -391,7 +405,7 @@ export default function ResultsPage() {
                 {result.feedback.strengths.map((strength, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
                     <span className="text-green-600 text-xl">✓</span>
-                    <span className="text-gray-700 flex-1">{strength}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(strength)}</span>
                   </li>
                 ))}
               </ul>
@@ -408,7 +422,7 @@ export default function ResultsPage() {
                 {result.feedback.weaknesses.map((weakness, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
                     <span className="text-orange-600 text-xl">⚠</span>
-                    <span className="text-gray-700 flex-1">{weakness}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(weakness)}</span>
                   </li>
                 ))}
               </ul>
@@ -425,7 +439,7 @@ export default function ResultsPage() {
                 {result.feedback.missing_points.map((item, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
                     <span className="text-yellow-700 text-xl">•</span>
-                    <span className="text-gray-700 flex-1">{item}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(item)}</span>
                   </li>
                 ))}
               </ul>
@@ -442,7 +456,7 @@ export default function ResultsPage() {
                 {result.feedback.errors.map((err, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
                     <span className="text-red-600 text-xl">!</span>
-                    <span className="text-gray-700 flex-1">{err}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(err)}</span>
                   </li>
                 ))}
               </ul>
@@ -459,7 +473,7 @@ export default function ResultsPage() {
                 {result.feedback.suggestions.map((suggestion, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                     <span className="text-blue-600 text-xl">→</span>
-                    <span className="text-gray-700 flex-1">{suggestion}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(suggestion)}</span>
                   </li>
                 ))}
               </ul>
@@ -476,7 +490,7 @@ export default function ResultsPage() {
                 {result.feedback.improvements.map((improvement, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-indigo-50 rounded-lg">
                     <span className="text-indigo-600 text-xl">→</span>
-                    <span className="text-gray-700 flex-1">{improvement}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(improvement)}</span>
                   </li>
                 ))}
               </ul>
@@ -493,7 +507,7 @@ export default function ResultsPage() {
                 {result.feedback.risk_factors.map((factor, idx) => (
                   <li key={idx} className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
                     <span className="text-red-600 text-xl">!</span>
-                    <span className="text-gray-700 flex-1">{factor}</span>
+                    <span className="text-gray-700 flex-1">{toDisplayString(factor)}</span>
                   </li>
                 ))}
               </ul>

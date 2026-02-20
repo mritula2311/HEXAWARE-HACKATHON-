@@ -119,8 +119,8 @@ export default function CodeSubmissionPage() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     // Mock results for visible test cases
-    const mockResults = assessment.test_cases.filter(tc => !tc.hidden).map((tc) => ({
-      test_name: tc.name,
+    const mockResults = (assessment.test_cases || []).filter(tc => !tc.hidden).map((tc) => ({
+      test_name: tc.name || tc.id || 'Test',
       passed: Math.random() > 0.3, // Random pass/fail for demo
       expected: tc.expected_output,
       actual: Math.random() > 0.3 ? tc.expected_output : "Different output",
@@ -203,7 +203,7 @@ export default function CodeSubmissionPage() {
     );
   }
 
-  const visibleTestCases = assessment.test_cases.filter(tc => !tc.hidden);
+  const visibleTestCases = (assessment.test_cases || []).filter(tc => !tc.hidden);
   const passedTests = testResults.filter(r => r.passed).length;
   const totalTests = testResults.length;
 

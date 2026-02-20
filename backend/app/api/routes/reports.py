@@ -29,30 +29,62 @@ def generate_report(report_type: str, filters: dict = None, db: Session = Depend
 
 @router.post("/individual")
 def generate_individual(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Generate comprehensive HR assessment report for an individual fresher."""
     fresher_id = data.get("fresher_id")
+    if not fresher_id:
+        raise HTTPException(status_code=400, detail="fresher_id is required")
+    
     from app.agents.reporting_agent import ReportingAgent
+    from app.models.fresher import Fresher
+    
+    # Verify fresher exists
+    fresher = db.query(Fresher).filter(Fresher.id == int(fresher_id)).first()
+    if not fresher:
+        raise HTTPException(status_code=404, detail="Fresher not found")
+    
     agent = ReportingAgent()
-    # In a real app, generate_report would take fresher_id
-    result = agent.generate_report(db, f"individual_{fresher_id}", current_user.id)
-    return result
+    try:
+        result = agent.generate_individual_hr_report(db, int(fresher_id))
+        return result
+    except Exception as e:
+        print(f"[ERROR] Individual HR report generation failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/department")
 def generate_department(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     department = data.get("department")
+    if not department:
+        raise HTTPException(status_code=400, detail="department is required")
     from app.agents.reporting_agent import ReportingAgent
     agent = ReportingAgent()
-    result = agent.generate_report(db, f"department_{department}", current_user.id)
-    return result
+    try:
+        result = agent.generate_report(db, f"department_{department}", current_user.id)
+        return result
+    except Exception as e:
+        print(f"[ERROR] Department report generation failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/cohort")
 def generate_cohort(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     cohort_id = data.get("cohort_id")
+    if not cohort_id:
+        raise HTTPException(status_code=400, detail="cohort_id is required")
     from app.agents.reporting_agent import ReportingAgent
     agent = ReportingAgent()
-    result = agent.generate_report(db, f"cohort_{cohort_id}", current_user.id)
-    return result
+    try:
+        result = agent.generate_report(db, f"cohort_{cohort_id}", current_user.id)
+        return result
+    except Exception as e:
+        print(f"[ERROR] Cohort report generation failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("")
@@ -62,7 +94,7 @@ def list_reports(db: Session = Depends(get_db), current_user: User = Depends(get
 
 
 @router.get("/{report_id}/download")
-def download_report(report_id: str, db: Session = Depends(get_db)):
+def download_report(report_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         print(f"[DEBUG] Download request for report {report_id}")
         report_id_int = int(report_id)
@@ -71,7 +103,7 @@ def download_report(report_id: str, db: Session = Depends(get_db)):
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
         if not report.content:
-            return {"message": "Report generation in progress or content empty"}
+            raise HTTPException(status_code=404, detail="Report generation in progress or content empty")
         
         from fastapi.responses import JSONResponse, Response
         import json
@@ -111,7 +143,7 @@ def download_report(report_id: str, db: Session = Depends(get_db)):
         print(f"[ERROR] Download failed for report {report_id}: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Report download failed: {str(e)}")
 
 
 def _report_dict(r: Report) -> dict:

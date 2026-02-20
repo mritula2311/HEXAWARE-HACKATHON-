@@ -208,6 +208,12 @@ export default function ManagerDashboard() {
   }, [token, normalizeDashboardData]);
 
   useEffect(() => { if (!authLoading) fetchDashboardData(); }, [authLoading, fetchDashboardData]);
+  // Allow admins to view manager dashboard (via "Switch to Manager view" link)
+  // useEffect(() => {
+  //   if (!authLoading && user && (user.role || '').toLowerCase() === 'admin') {
+  //     router.replace('/dashboard/admin');
+  //   }
+  // }, [authLoading, user, router]);
 
   const data = dashboardData || getDemoData();
 
@@ -227,6 +233,21 @@ export default function ManagerDashboard() {
   const [selectedReportDept, setSelectedReportDept] = useState<string>('all');
   const [lastGeneratedReportId, setLastGeneratedReportId] = useState<string | null>(null);
   const [lastGeneratedType, setLastGeneratedType] = useState<string | null>(null);
+  const [aiTopic, setAiTopic] = useState('React Hooks');
+  const [aiType, setAiType] = useState('quiz');
+  const [aiStatus, setAiStatus] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const [newUser, setNewUser] = useState({
+    email: '',
+    password: 'password123',
+    first_name: '',
+    last_name: '',
+    role: 'fresher',
+    department: '',
+  });
+  const [userStatus, setUserStatus] = useState<string | null>(null);
+  const isAdmin = (user?.role || '').toLowerCase() === 'admin';
 
   const generateReport = async (type: string, filters?: any) => {
     if (!token) { alert("Authentication error. Please login again."); return; }
@@ -318,6 +339,33 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleAiGenerate = async () => {
+    if (!token) { alert('Authentication error. Please login again.'); return; }
+    setAiLoading(true);
+    setAiStatus(null);
+    try {
+      const res = await api.assessment.aiGenerate({ topic: aiTopic, assessment_type: aiType }, token);
+      if (res.error) throw new Error(res.error);
+      setAiStatus(`Created assessment: ${res.data?.title || 'Untitled'} (ID ${res.data?.id})`);
+    } catch (e: any) {
+      setAiStatus(`Failed: ${e.message || 'Unknown error'}`);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!token) { alert('Authentication error. Please login again.'); return; }
+    setUserStatus(null);
+    try {
+      const res = await api.admin.createUser(newUser, token);
+      if (res.error) throw new Error(res.error);
+      setUserStatus(`Created ${res.data?.email}`);
+    } catch (e: any) {
+      setUserStatus(`Failed: ${e.message || 'Unknown error'}`);
+    }
+  };
+
   const getTrendIcon = (trend: string) => {
     if (trend === 'up') return <ArrowUp className="w-4 h-4 text-green-500" />;
     if (trend === 'down') return <ArrowDown className="w-4 h-4 text-red-500" />;
@@ -337,7 +385,8 @@ export default function ManagerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-shell">
+      <div className="blob-amber" aria-hidden />
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b z-40 flex items-center justify-between px-4">
         <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu className="w-6 h-6" /></button>
@@ -363,6 +412,8 @@ export default function ManagerDashboard() {
               { id: 'freshers', label: 'Freshers', icon: Users },
               { id: 'agents', label: 'Agent Queue', icon: Cpu },
               { id: 'reports', label: 'Reports', icon: FileText },
+              { id: 'ai', label: 'AI Assessments', icon: Layers },
+              ...(isAdmin ? [{ id: 'admin', label: 'Admin Users', icon: Settings }] : []),
               { id: 'alerts', label: 'Risk Alerts', icon: AlertTriangle, badge: data.alerts?.length },
             ].map((item) => {
               const Icon = item.icon;
@@ -389,7 +440,7 @@ export default function ManagerDashboard() {
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Manager Dashboard</h1>
               <p className="text-gray-500 mt-1">Welcome back, {user?.first_name || 'Admin'}</p>
             </div>
             <div className="hidden lg:flex items-center space-x-4">
@@ -655,6 +706,71 @@ export default function ManagerDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'ai' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">AI Assessment Generator</h2>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-600">Topic</label>
+                    <input value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2" placeholder="e.g., React Hooks" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">Type</label>
+                    <select value={aiType} onChange={(e) => setAiType(e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2">
+                      <option value="quiz">Quiz</option>
+                      <option value="code">Code</option>
+                      <option value="assignment">Assignment</option>
+                    </select>
+                  </div>
+                  <button onClick={handleAiGenerate} disabled={aiLoading} className="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center justify-center gap-2">
+                    {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} Generate Assessment
+                  </button>
+                  {aiStatus && <p className="text-sm text-gray-700">{aiStatus}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'admin' && isAdmin && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-indigo-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">Create User</h2>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <input value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="Email" />
+                  <input value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="Password" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input value={newUser.first_name} onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="First name" />
+                    <input value={newUser.last_name} onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="Last name" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })} className="border rounded-lg px-3 py-2">
+                      <option value="fresher">Fresher</option>
+                      <option value="mentor">Mentor</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <input value={newUser.department} onChange={(e) => setNewUser({ ...newUser, department: e.target.value })} className="border rounded-lg px-3 py-2" placeholder="Department" />
+                  </div>
+                  <button onClick={handleCreateUser} className="w-full py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Create User
+                  </button>
+                  {userStatus && <p className="text-sm text-gray-700">{userStatus}</p>}
                 </div>
               </div>
             </div>

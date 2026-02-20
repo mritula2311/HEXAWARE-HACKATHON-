@@ -4,7 +4,7 @@ from app.config import settings
 from app.database import create_tables, SessionLocal
 
 # Import routers
-from app.api.routes import auth, freshers, schedules, assessments, analytics, agents, workflows, reports, curricula, admin
+from app.api.routes import auth, freshers, schedules, assessments, analytics, agents, workflows, reports, curricula, admin, premium, certifications, quiz_config
 
 app = FastAPI(
     title="MaverickAI API",
@@ -13,9 +13,10 @@ app = FastAPI(
 )
 
 # CORS middleware
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(","),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +33,9 @@ app.include_router(workflows.router, prefix="/api/v1/workflows")
 app.include_router(reports.router, prefix="/api/v1/reports")
 app.include_router(curricula.router, prefix="/api/v1/curricula")
 app.include_router(admin.router, prefix="/api/v1/admin")
+app.include_router(premium.router)  # Premium routes use their own /api/v1 prefix
+app.include_router(certifications.router, prefix="/api/v1/certifications")
+app.include_router(quiz_config.router, prefix="/api/v1/quiz-evaluator")
 
 
 @app.get("/health")

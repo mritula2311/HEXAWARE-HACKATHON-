@@ -14,8 +14,35 @@ def seed_database(db):
     if db.query(User).count() > 0:
         print("[Seed] Database already has data, skipping...")
         return
-
-    print("[Seed] Seeding database with test data...")
+    print("[Seed] Seeding database with fresh data...")
+    
+    # Clear existing data for fresh seed
+    try:
+        from app.models.report import Alert
+        from app.models.assessment import Submission
+        from app.models.badge import FresherBadge, Badge
+        from app.models.schedule_assessment import AssessmentSchedule
+        from app.models.analytics import PerformanceAnalytics
+        
+        db.query(Alert).delete()
+        db.query(Submission).delete()
+        db.query(FresherBadge).delete()
+        db.query(Badge).delete()
+        db.query(AssessmentSchedule).delete()
+        db.query(PerformanceAnalytics).delete()
+        db.query(Achievement).delete()
+        db.query(Skill).delete()
+        db.query(ScheduleItem).delete()
+        db.query(Schedule).delete()
+        db.query(Assessment).delete()
+        db.query(Curriculum).delete()
+        db.query(Fresher).delete()
+        db.query(User).delete()
+        db.commit()
+        print("[Seed] Cleared existing data")
+    except Exception as e:
+        print(f"[Seed] Warning during cleanup: {e}")
+        db.rollback()
 
     # ========== USERS ==========
     users_data = [
@@ -24,6 +51,7 @@ def seed_database(db):
         {"email": "bob@maverick.ai", "first_name": "Bob", "last_name": "Martinez", "role": "fresher", "department": "Engineering", "password": "password123"},
         {"email": "emily@maverick.ai", "first_name": "Emily", "last_name": "Davis", "role": "fresher", "department": "Engineering", "password": "password123"},
         {"email": "admin@maverick.ai", "first_name": "Admin", "last_name": "User", "role": "admin", "department": "IT", "password": "admin123"},
+        {"email": "manager@maverick.ai", "first_name": "James", "last_name": "Manager", "role": "manager", "department": "Engineering", "password": "password123"},
     ]
     users = []
     for u in users_data:
@@ -106,14 +134,10 @@ def seed_database(db):
         items = [
             ("Python Fundamentals - Variables & Types", "reading", 60, "09:00", "Python", 
              "# Python Fundamentals\n\nPython is a versatile language... [Detailed Guide]", None, None),
-            ("Practice: Variable Assignments", "coding", 45, "10:00", "Python",
-             "Complete the exercises on variables...", "https://codesandbox.io/s/python-basics", None),
             ("Quiz: Python Basics", "quiz", 30, "11:00", "Python",
              "Test your knowledge of Python basics.", None, 1),
             ("Video: Control Flow", "video", 45, "11:30", "Python",
              "Watch this video on if-statements and loops.", "https://www.youtube.com/embed/Zp5MuPOxlM0", None),
-            ("Coding Challenge: FizzBuzz", "coding", 60, "13:00", "Python",
-             "Implement the FizzBuzz algorithm.", None, 2),
             ("Data Structures - Lists", "reading", 60, "14:00", "Data Structures",
              "# Python Lists\n\nLists are ordered collections...", None, None),
             ("Project: Contact Manager", "project", 90, "15:00", "Python",
@@ -138,55 +162,17 @@ def seed_database(db):
             "language": "python",
             "skills": ["Python", "Programming"],
             "questions": [
-                {"id": "q1", "question": "What is the output of print(type(42))?", "type": "multiple_choice", "options": ["<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'bool'>"], "correct_answer": "<class 'int'>", "points": 20},
-                {"id": "q2", "question": "Python is a statically typed language.", "type": "true_false", "options": ["True", "False"], "correct_answer": "False", "points": 20},
-                {"id": "q3", "question": "Which keyword is used to define a function in Python?", "type": "multiple_choice", "options": ["function", "def", "func", "define"], "correct_answer": "def", "points": 20},
-                {"id": "q4", "question": "What does len([1, 2, 3]) return?", "type": "multiple_choice", "options": ["2", "3", "4", "Error"], "correct_answer": "3", "points": 20},
-                {"id": "q5", "question": "Python supports multiple inheritance.", "type": "true_false", "options": ["True", "False"], "correct_answer": "True", "points": 20},
-                {"id": "q6", "question": "Which data type is immutable?", "type": "multiple_choice", "options": ["list", "dict", "set", "tuple"], "correct_answer": "tuple", "points": 20},
-                {"id": "q7", "question": "What is the output of 3 * 'ab'?", "type": "multiple_choice", "options": ["ababab", "ab3", "Error", "ab ab ab"], "correct_answer": "ababab", "points": 20},
-                {"id": "q8", "question": "Which keyword is used to handle exceptions?", "type": "multiple_choice", "options": ["catch", "except", "error", "handle"], "correct_answer": "except", "points": 20},
-                {"id": "q9", "question": "What does dict.get('x') return if 'x' does not exist?", "type": "multiple_choice", "options": ["KeyError", "None", "0", "False"], "correct_answer": "None", "points": 20},
-                {"id": "q10", "question": "Which loop is best for iterating over a list?", "type": "multiple_choice", "options": ["for", "while", "do-while", "repeat"], "correct_answer": "for", "points": 20},
+                {"id": "q1", "question": "What is the output of print(type(42))?", "type": "multiple_choice", "options": ["<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'number'>"], "correct_answer": "<class 'int'>", "points": 10},
+                {"id": "q2", "question": "Python is a dynamically typed language.", "type": "true_false", "options": ["True", "False"], "correct_answer": "True", "points": 10},
+                {"id": "q3", "question": "Which keyword is used to define a function in Python?", "type": "multiple_choice", "options": ["function", "def", "func", "define"], "correct_answer": "def", "points": 10},
+                {"id": "q4", "question": "What does len([1, 2, 3]) return?", "type": "multiple_choice", "options": ["2", "3", "4", "1"], "correct_answer": "3", "points": 10},
+                {"id": "q5", "question": "Python supports multiple inheritance.", "type": "true_false", "options": ["True", "False"], "correct_answer": "True", "points": 10},
+                {"id": "q6", "question": "Which of the following data types is immutable in Python?", "type": "multiple_choice", "options": ["list", "dict", "set", "tuple"], "correct_answer": "tuple", "points": 10},
+                {"id": "q7", "question": "What is the output of 3 * 'ab'?", "type": "multiple_choice", "options": ["ababab", "ab3", "aabbb", "ab ab ab"], "correct_answer": "ababab", "points": 10},
+                {"id": "q8", "question": "Which keyword is used to handle exceptions in Python?", "type": "multiple_choice", "options": ["catch", "except", "error", "handle"], "correct_answer": "except", "points": 10},
+                {"id": "q9", "question": "What does dict.get('key') return if 'key' does not exist in the dictionary?", "type": "multiple_choice", "options": ["KeyError", "None", "0", "False"], "correct_answer": "None", "points": 10},
+                {"id": "q10", "question": "Which loop is best suited for iterating over elements of a list?", "type": "multiple_choice", "options": ["for", "while", "do-while", "loop"], "correct_answer": "for", "points": 10},
             ],
-        },
-        {
-            "title": "FizzBuzz Coding Challenge",
-            "description": "Write a function that returns 'Fizz' for multiples of 3, 'Buzz' for multiples of 5, and 'FizzBuzz' for multiples of both.",
-            "type": "code",
-            "time_limit": 45,
-            "max_score": 100,
-            "passing_score": 60,
-            "language": "python",
-            "skills": ["Python", "Data Structures"],
-            "starter_code": "def fizzbuzz(n):\n    # Write your solution here\n    pass\n",
-            "test_cases": [
-                {"id": "t1", "name": "Test Fizz", "input": "3", "expected_output": "Fizz", "hidden": False, "points": 20},
-                {"id": "t2", "name": "Test Buzz", "input": "5", "expected_output": "Buzz", "hidden": False, "points": 20},
-                {"id": "t3", "name": "Test FizzBuzz", "input": "15", "expected_output": "FizzBuzz", "hidden": False, "points": 20},
-                {"id": "t4", "name": "Test Number", "input": "7", "expected_output": "7", "hidden": False, "points": 20},
-                {"id": "t5", "name": "Edge Case", "input": "0", "expected_output": "FizzBuzz", "hidden": True, "points": 20},
-            ],
-            "rubric": {"correctness": 70, "code_quality": 15, "efficiency": 15},
-        },
-        {
-            "title": "Data Structures Assessment",
-            "description": "Implement common data structure operations including arrays, linked lists, and trees.",
-            "type": "code",
-            "time_limit": 60,
-            "max_score": 100,
-            "passing_score": 60,
-            "language": "python",
-            "skills": ["Data Structures", "Python"],
-            "starter_code": "def reverse_list(lst):\n    # Reverse a list without using built-in reverse()\n    pass\n\ndef find_max(lst):\n    # Find maximum element without using max()\n    pass\n",
-            "test_cases": [
-                {"id": "t1", "name": "Reverse List", "input": "[1,2,3,4,5]", "expected_output": "[5,4,3,2,1]", "hidden": False, "points": 25},
-                {"id": "t2", "name": "Reverse Empty", "input": "[]", "expected_output": "[]", "hidden": False, "points": 15},
-                {"id": "t3", "name": "Find Max", "input": "[3,7,1,9,4]", "expected_output": "9", "hidden": False, "points": 25},
-                {"id": "t4", "name": "Find Max Single", "input": "[42]", "expected_output": "42", "hidden": True, "points": 15},
-                {"id": "t5", "name": "Edge Cases", "input": "[-1,-5,-3]", "expected_output": "-1", "hidden": True, "points": 20},
-            ],
-            "rubric": {"correctness": 70, "code_quality": 15, "efficiency": 15},
         },
         {
             "title": "SQL Fundamentals Quiz",
@@ -198,24 +184,25 @@ def seed_database(db):
             "language": None,
             "skills": ["SQL", "Database"],
             "questions": [
-                {"id": "q1", "question": "Which SQL keyword is used to retrieve data?", "type": "multiple_choice", "options": ["GET", "SELECT", "FETCH", "RETRIEVE"], "correct_answer": "SELECT", "points": 20},
-                {"id": "q2", "question": "NULL means zero in SQL.", "type": "true_false", "options": ["True", "False"], "correct_answer": "False", "points": 20},
-                {"id": "q3", "question": "Which clause is used to filter grouped results?", "type": "multiple_choice", "options": ["WHERE", "HAVING", "FILTER", "GROUP BY"], "correct_answer": "HAVING", "points": 20},
-                {"id": "q4", "question": "PRIMARY KEY allows NULL values.", "type": "true_false", "options": ["True", "False"], "correct_answer": "False", "points": 20},
-                {"id": "q5", "question": "Which JOIN returns all rows from both tables?", "type": "multiple_choice", "options": ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN"], "correct_answer": "FULL OUTER JOIN", "points": 20},
+                {"id": "q1", "question": "Which SQL statement is used to retrieve data from a database?", "type": "multiple_choice", "options": ["GET", "SELECT", "FETCH", "RETRIEVE"], "correct_answer": "SELECT", "points": 20},
+                {"id": "q2", "question": "In SQL, NULL represents an unknown or missing value, not zero.", "type": "true_false", "options": ["True", "False"], "correct_answer": "True", "points": 20},
+                {"id": "q3", "question": "Which clause is used to filter results after GROUP BY?", "type": "multiple_choice", "options": ["WHERE", "HAVING", "FILTER", "GROUP FILTER"], "correct_answer": "HAVING", "points": 20},
+                {"id": "q4", "question": "A PRIMARY KEY column can contain NULL values.", "type": "true_false", "options": ["True", "False"], "correct_answer": "False", "points": 20},
+                {"id": "q5", "question": "Which JOIN returns all matching and non-matching rows from both tables?", "type": "multiple_choice", "options": ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN"], "correct_answer": "FULL OUTER JOIN", "points": 20},
             ],
         },
         {
             "title": "Software Architecture Report",
-            "description": "Write a short report on the Monolithic vs Microservices architecture based on your learning this week.",
+            "description": "Write a detailed report on software architecture principles including design patterns, scalability, and best practices. Explain how you would architect a real-world web application.",
             "type": "assignment",
-            "time_limit": 120,
+            "time_limit": 60,
             "max_score": 100,
             "passing_score": 60,
-            "language": "text",
-            "skills": ["System Design", "Communication"],
-            "instructions": "In your report, cover:\n1. Pros and Cons of Monoliths\n2. Key benefits of Microservices\n3. One scenario where you would choose a Monolith over Microservices.",
+            "language": None,
+            "skills": ["Software Design", "Architecture", "Technical Writing"],
+            "questions": [],
         },
+
     ]
     assessments = []
     for ad in assessments_data:
@@ -274,29 +261,11 @@ def seed_database(db):
         {"assessment_idx": 0, "fresher_idx": 2, "score": 88, "status": "completed"},  # Bob
         {"assessment_idx": 0, "fresher_idx": 3, "score": 65, "status": "completed"},  # Emily
 
-        # Assessment 2: FizzBuzz Coding Challenge
-        {"assessment_idx": 1, "fresher_idx": 0, "score": 95, "status": "completed"},  # Alice
-        {"assessment_idx": 1, "fresher_idx": 1, "score": 25, "status": "completed"},  # John
-        {"assessment_idx": 1, "fresher_idx": 2, "score": 90, "status": "completed"},  # Bob
-        {"assessment_idx": 1, "fresher_idx": 3, "score": 60, "status": "completed"},  # Emily
-
-        # Assessment 3: Data Structures Assessment
-        {"assessment_idx": 2, "fresher_idx": 0, "score": 88, "status": "completed"},  # Alice
-        {"assessment_idx": 2, "fresher_idx": 1, "score": 30, "status": "completed"},  # John
-        {"assessment_idx": 2, "fresher_idx": 2, "score": 85, "status": "completed"},  # Bob
-        {"assessment_idx": 2, "fresher_idx": 3, "score": 72, "status": "completed"},  # Emily
-
-        # Assessment 4: SQL Fundamentals Quiz
-        {"assessment_idx": 3, "fresher_idx": 0, "score": 90, "status": "completed"},  # Alice
-        {"assessment_idx": 3, "fresher_idx": 1, "score": 50, "status": "completed"},  # John
-        {"assessment_idx": 3, "fresher_idx": 2, "score": 82, "status": "completed"},  # Bob
-        {"assessment_idx": 3, "fresher_idx": 3, "score": 72, "status": "completed"},  # Emily
-
-        # Assessment 5: Software Architecture Report
-        {"assessment_idx": 4, "fresher_idx": 0, "score": 100, "status": "completed"},  # Alice
-        {"assessment_idx": 4, "fresher_idx": 1, "score": 60, "status": "completed"},  # John
-        {"assessment_idx": 4, "fresher_idx": 2, "score": 92, "status": "completed"},  # Bob
-        {"assessment_idx": 4, "fresher_idx": 3, "score": 78, "status": "completed"},  # Emily
+        # Assessment 2: SQL Fundamentals Quiz
+        {"assessment_idx": 1, "fresher_idx": 0, "score": 90, "status": "completed"},  # Alice
+        {"assessment_idx": 1, "fresher_idx": 1, "score": 50, "status": "completed"},  # John
+        {"assessment_idx": 1, "fresher_idx": 2, "score": 82, "status": "completed"},  # Bob
+        {"assessment_idx": 1, "fresher_idx": 3, "score": 72, "status": "completed"},  # Emily
     ]
     
     submissions = []
@@ -306,7 +275,6 @@ def seed_database(db):
         
         # Generate AI feedback via LLM agent
         score = sub_data["score"]
-        is_code = assessment.assessment_type in ["code", "coding"]
         from app.core.llm_client import llm_client
 
         prompt = f"""You are the MaverickAI Assessment Agent. Generate feedback JSON.
@@ -341,10 +309,6 @@ Return JSON with:
                 "improvements": ["Add clarity to approach", "Include explanations"],
                 "risk_level": "low" if score >= 80 else ("medium" if score >= 60 else "high"),
             }
-
-        if is_code:
-            feedback["test_score"] = score
-            feedback["style_score"] = min(score + 5, 100) if score >= 80 else max(score - 10, 50)
         
         submission = Submission(
             assessment_id=assessment.id,
@@ -371,10 +335,156 @@ Return JSON with:
         db.add(a)
 
     db.commit()
-    print("[Seed] ✅ Database seeded successfully!")
+    print("[Seed] Database seeded successfully!")
     print(f"  - {len(users_data)} users")
     print(f"  - {len(freshers_data)} freshers")
     print(f"  - {len(assessments_data)} assessments")
     print(f"  - {len(submission_data)} submissions")
     print(f"  - 1 curriculum")
     print(f"  - {len(alerts)} alerts")
+    
+    # ========== BADGES ==========
+    from app.models.badge import Badge
+    badges_data = [
+        {"name": "Python Master", "description": "Scored 90+ on Python assessments", "skill_name": "Python", "min_score": 90, "color": "blue"},
+        {"name": "Python Expert", "description": "Consistent excellence in Python", "skill_name": "Python", "min_score": 85, "color": "indigo"},
+        {"name": "SQL Champion", "description": "Mastery of SQL fundamentals", "skill_name": "SQL", "min_score": 90, "color": "purple"},
+        {"name": "SQL Pro", "description": "Advanced SQL skills demonstrated", "skill_name": "SQL", "min_score": 85, "color": "violet"},
+        {"name": "Quick Learner", "description": "Fast improvement across assessments", "skill_name": "General", "min_score": 70, "color": "green"},
+        {"name": "Consistent Performer", "description": "Reliable and steady performance", "skill_name": "General", "min_score": 75, "color": "teal"},
+    ]
+    
+    for bd in badges_data:
+        badge = Badge(
+            name=bd["name"],
+            description=bd["description"],
+            skill_name=bd["skill_name"],
+            min_score=bd["min_score"],
+            color=bd["color"],
+            icon_url=f"https://api.dicebear.com/7.x/badges/svg?seed={bd['name']}"
+        )
+        db.add(badge)
+    
+    db.commit()
+    db.flush()
+    print(f"  - {len(badges_data)} badges created")
+    
+    # ========== AUTO-ASSIGN BADGES BASED ON SCORES ==========
+    from app.models.badge import FresherBadge
+    from datetime import datetime
+    
+    # Get all badges
+    all_badges = db.query(Badge).all()
+    badge_assignments = 0
+    
+    for fresher in freshers:
+        # Get submissions for this fresher
+        fresher_submissions = [sub for sub in submissions if sub.user_id == fresher.user_id]
+        
+        # Group submissions by skill
+        skill_scores = {}
+        for sub in fresher_submissions:
+            assessment = next((a for a in assessments if a.id == sub.assessment_id), None)
+            if assessment and assessment.skills_assessed:
+                skills = json.loads(assessment.skills_assessed) if isinstance(assessment.skills_assessed, str) else assessment.skills_assessed
+                for skill in skills:
+                    if skill not in skill_scores:
+                        skill_scores[skill] = []
+                    skill_scores[skill].append(sub.score)
+        
+        # Check badge eligibility for each badge
+        for badge in all_badges:
+            if badge.skill_name in skill_scores:
+                avg_skill_score = sum(skill_scores[badge.skill_name]) / len(skill_scores[badge.skill_name])
+                
+                # Check if fresher qualifies for this badge
+                if avg_skill_score >= badge.min_score:
+                    # Check if badge already assigned
+                    existing = db.query(FresherBadge).filter(
+                        FresherBadge.fresher_id == fresher.id,
+                        FresherBadge.badge_id == badge.id
+                    ).first()
+                    
+                    if not existing:
+                        fresher_badge = FresherBadge(
+                            fresher_id=fresher.id,
+                            badge_id=badge.id,
+                            assessment_id=None,
+                            score_achieved=avg_skill_score,
+                            earned_at=datetime.utcnow()
+                        )
+                        db.add(fresher_badge)
+                        badge_assignments += 1
+            elif badge.skill_name == "General":
+                # General badges based on overall scores
+                all_scores = [sub.score for sub in fresher_submissions]
+                if all_scores:
+                    avg_score = sum(all_scores) / len(all_scores)
+                    if avg_score >= badge.min_score:
+                        existing = db.query(FresherBadge).filter(
+                            FresherBadge.fresher_id == fresher.id,
+                            FresherBadge.badge_id == badge.id
+                        ).first()
+                        
+                        if not existing:
+                            fresher_badge = FresherBadge(
+                                fresher_id=fresher.id,
+                                badge_id=badge.id,
+                                assessment_id=None,
+                                score_achieved=avg_score,
+                                earned_at=datetime.utcnow()
+                            )
+                            db.add(fresher_badge)
+                            badge_assignments += 1
+    
+    db.commit()
+    db.flush()
+    print(f"  - {badge_assignments} badges assigned to freshers")
+    
+    # ========== INITIALIZE ANALYTICS ==========
+    from app.models.analytics import PerformanceAnalytics
+    
+    for fresher in freshers:
+        # Get submissions for this fresher
+        fresher_submissions = [sub for sub in submissions if sub.user_id == fresher.user_id]
+        
+        if fresher_submissions:
+            total_score = sum(s.score for s in fresher_submissions)
+            avg_score = total_score / len(fresher_submissions)
+            
+            quiz_subs = [s for s in fresher_submissions if s.submission_type == 'quiz']
+            quiz_avg = sum(s.score for s in quiz_subs) / len(quiz_subs) if quiz_subs else 0
+            
+            passed = sum(1 for s in fresher_submissions if s.pass_status == 'pass')
+            pass_rate = (passed / len(fresher_submissions) * 100)
+            
+            # Build skills breakdown
+            skills_breakdown = {}
+            for sub in fresher_submissions:
+                assessment = next((a for a in assessments if a.id == sub.assessment_id), None)
+                if assessment and assessment.skills_assessed:
+                    skills = json.loads(assessment.skills_assessed) if isinstance(assessment.skills_assessed, str) else assessment.skills_assessed
+                    for skill in skills:
+                        skills_breakdown[skill] = skills_breakdown.get(skill, 0) + sub.score
+            
+            # Average skills
+            for skill in skills_breakdown:
+                skills_breakdown[skill] = skills_breakdown[skill] / len(quiz_subs) if quiz_subs else 0
+            
+            analytics = PerformanceAnalytics(
+                fresher_id=fresher.id,
+                overall_score=avg_score,
+                quiz_average=quiz_avg,
+                assessment_count=len(fresher_submissions),
+                passed_count=passed,
+                failed_count=len(fresher_submissions) - passed,
+                pass_rate=pass_rate,
+                skills_breakdown=json.dumps(skills_breakdown),
+                risk_level=fresher.risk_level,
+                risk_score=fresher.risk_score,
+                engagement_score=75 + (avg_score / 100 * 25),  # Score-based engagement
+            )
+            db.add(analytics)
+    
+    db.commit()
+    print(f"  - {len(freshers_data)} analytics initialized")

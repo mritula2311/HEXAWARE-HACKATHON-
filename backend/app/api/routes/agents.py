@@ -23,14 +23,32 @@ def generate_schedule(data: dict, db: Session = Depends(get_db), current_user: U
 
 @router.post("/grade")
 def grade_submission(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from app.agents.assessment_agent import AssessmentAgent
-    from app.models.assessment import Submission
-    agent = AssessmentAgent()
+    from app.models.assessment import Submission, Assessment
+    
     submission_id = data.get("submission_id")
     sub = db.query(Submission).filter(Submission.id == int(submission_id)).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Submission not found")
-    return agent.execute(db, sub)
+    
+    # Get assessment to determine type
+    assessment = db.query(Assessment).filter(Assessment.id == sub.assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    # Use specialized HR-focused evaluator based on assessment type
+    # Only quiz and assignment types supported (code challenges removed)
+    if assessment.assessment_type == "quiz":
+        from app.agents.quiz_evaluator_agent import QuizEvaluatorAgent
+        agent = QuizEvaluatorAgent()
+    elif assessment.assessment_type == "assignment":
+        from app.agents.assignment_evaluator_agent import AssignmentEvaluatorAgent
+        agent = AssignmentEvaluatorAgent()
+    else:
+        # Fallback to generic agent
+        from app.agents.assessment_agent import AssessmentAgent
+        agent = AssessmentAgent()
+    
+    return agent.evaluate(db, sub, assessment)
 
 
 @router.post("/predict-risk")

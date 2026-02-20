@@ -28,4 +28,8 @@ def create_tables():
         Assessment, Submission,
         Curriculum, Report, Alert,
     )
+    from app.models.badge import Badge, FresherBadge
+    from app.models.schedule_assessment import AssessmentSchedule
+    from app.models.analytics import PerformanceAnalytics
+    from app.models.certification import Certification, AssignmentHistory
     Base.metadata.create_all(bind=engine)

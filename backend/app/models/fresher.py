@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -18,6 +19,11 @@ class Fresher(Base):
     risk_score = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    badges = relationship("FresherBadge", back_populates="fresher", cascade="all, delete-orphan")
+    assessment_schedules = relationship("AssessmentSchedule", back_populates="fresher", cascade="all, delete-orphan")
+    performance_analytics = relationship("PerformanceAnalytics", back_populates="fresher", uselist=False, cascade="all, delete-orphan")
 
 
 class Skill(Base):

@@ -73,6 +73,9 @@ class ProfileAgent(BaseAgent):
                 )
                 db.add(new_ach)
 
+        # Award badges based on skill performance
+        self._check_and_award_badges(db, fresher, skills_assessed)
+
         # Update overall progress
         all_subs = db.query(Submission).filter(
             Submission.user_id == fresher.user_id,
@@ -113,6 +116,77 @@ class ProfileAgent(BaseAgent):
             "ai_summary": ai_summary or "Initializing skill analysis...",
             "agent": "ProfileAgent",
         }
+
+    def _check_and_award_badges(self, db, fresher: Fresher, skills_assessed: list):
+        """Check and award badges based on skill performance."""
+        from app.models.badge import Badge, FresherBadge
+        from datetime import datetime
+        
+        # Get all submissions for this fresher
+        all_subs = db.query(Submission).filter(
+            Submission.user_id == fresher.user_id,
+            Submission.status == "completed",
+        ).all()
+        
+        if not all_subs:
+            return
+        
+        # Group submissions by skill
+        skill_scores = {}
+        for sub in all_subs:
+            assessment = db.query(Assessment).filter(Assessment.id == sub.assessment_id).first()
+            if assessment and assessment.skills_assessed:
+                try:
+                    skills = json.loads(assessment.skills_assessed) if isinstance(assessment.skills_assessed, str) else assessment.skills_assessed
+                except Exception:
+                    skills = []
+                    
+                for skill in skills:
+                    if skill not in skill_scores:
+                        skill_scores[skill] = []
+                    if sub.score is not None:
+                        skill_scores[skill].append(sub.score)
+        
+        # Get all available badges
+        all_badges = db.query(Badge).all()
+        
+        # Check badge eligibility for each badge
+        for badge in all_badges:
+            should_award = False
+            score_achieved = 0
+            
+            if badge.skill_name in skill_scores:
+                # Skill-specific badge
+                avg_skill_score = sum(skill_scores[badge.skill_name]) / len(skill_scores[badge.skill_name])
+                if avg_skill_score >= badge.min_score:
+                    should_award = True
+                    score_achieved = avg_skill_score
+            elif badge.skill_name == "General":
+                # General badges based on overall scores
+                all_scores = [sub.score for sub in all_subs if sub.score is not None]
+                if all_scores:
+                    avg_score = sum(all_scores) / len(all_scores)
+                    if avg_score >= badge.min_score:
+                        should_award = True
+                        score_achieved = avg_score
+            
+            if should_award:
+                # Check if badge already assigned
+                existing = db.query(FresherBadge).filter(
+                    FresherBadge.fresher_id == fresher.id,
+                    FresherBadge.badge_id == badge.id
+                ).first()
+                
+                if not existing:
+                    fresher_badge = FresherBadge(
+                        fresher_id=fresher.id,
+                        badge_id=badge.id,
+                        assessment_id=None,
+                        score_achieved=round(score_achieved, 1),
+                        earned_at=datetime.utcnow()
+                    )
+                    db.add(fresher_badge)
+                    print(f"[ProfileAgent] 🏆 Awarded badge '{badge.name}' to fresher {fresher.id} (score: {score_achieved:.1f})")
 
     def generate_fresher_summary(self, fresher: Fresher, skills: list):
         """Use LLM to generate a personalized skill portrait."""
