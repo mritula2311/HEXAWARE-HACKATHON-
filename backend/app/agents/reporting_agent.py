@@ -11,8 +11,41 @@ class ReportingAgent(BaseAgent):
     Enhanced with Corporate HR reporting capabilities for individual and team assessments.
     """
 
+    RECENT_ATTEMPTS_LIMIT = 3  # Only consider the last N quiz attempts per person per assessment
+
     def __init__(self):
         super().__init__()
+
+    def _get_recent_submissions(self, db, user_id: int = None, assessment_id: int = None, limit: int = None):
+        """
+        Get only the most recent N submissions per assessment per user.
+        This ensures reports reflect current performance, not ancient history.
+        """
+        from app.models.assessment import Submission, Assessment
+        from collections import defaultdict
+
+        n = limit or self.RECENT_ATTEMPTS_LIMIT
+        query = db.query(Submission)
+        if user_id:
+            query = query.filter(Submission.user_id == user_id)
+        if assessment_id:
+            query = query.filter(Submission.assessment_id == assessment_id)
+        query = query.filter(Submission.score != None)
+        query = query.order_by(Submission.submitted_at.desc())
+        all_subs = query.all()
+
+        # Group by (user_id, assessment_id) and keep only the last N
+        grouped = defaultdict(list)
+        for s in all_subs:
+            key = (s.user_id, s.assessment_id)
+            if len(grouped[key]) < n:
+                grouped[key].append(s)
+
+        # Flatten back to a list
+        recent = []
+        for subs in grouped.values():
+            recent.extend(subs)
+        return recent
 
     def execute(self, db, **kwargs):
         return self.generate_report(db, "overall")
@@ -91,13 +124,10 @@ class ReportingAgent(BaseAgent):
             # Average out
             skill_summary = {k: round(sum(v)/len(v), 1) for k, v in skill_summary.items()}
             
-            # Get Assessment Statistics
+            # Get Assessment Statistics (only last 3 attempts per person per assessment)
             assessments = db.query(Assessment).filter(Assessment.is_active == True).all()
             for assessment in assessments:
-                submissions = db.query(Submission).filter(
-                    Submission.assessment_id == assessment.id,
-                    Submission.score != None
-                ).all()
+                submissions = self._get_recent_submissions(db, assessment_id=assessment.id)
                 
                 if submissions:
                     avg_score = sum(s.score for s in submissions) / len(submissions)
@@ -110,7 +140,8 @@ class ReportingAgent(BaseAgent):
                         "avg_score": round(avg_score, 1),
                         "pass_rate": round(pass_rate, 1),
                         "total_attempts": len(submissions),
-                        "max_score": assessment.max_score
+                        "max_score": assessment.max_score,
+                        "note": f"Based on last {self.RECENT_ATTEMPTS_LIMIT} attempts per person"
                     })
 
         # Context construction for LLM
@@ -134,6 +165,7 @@ class ReportingAgent(BaseAgent):
         # Build simpler, clearer prompt
         prompt = f"""Generate a comprehensive {report_type.replace('_', ' ').title()} Intelligence Report as JSON.
 The report MUST be detailed and mention specific freshers by name where relevant, especially in the detailed list.
+IMPORTANT: Assessment statistics are based ONLY on the last {self.RECENT_ATTEMPTS_LIMIT} attempts per person per quiz to reflect current performance.
 
 DATA:
 {json.dumps(context, indent=2)}
@@ -185,14 +217,29 @@ Start response with {{ and end with }}. No markdown, just raw JSON."""
                 content["assessment_stats"] = assessment_stats
                 print(f"[ReportingAgent] Added assessment_stats")
             
-            # Ensure detailed_analysis has required keys
-            if "detailed_analysis" not in content or not isinstance(content.get("detailed_analysis"), dict):
-                content["detailed_analysis"] = {
-                    "risk_analysis": [f"{at_risk_count} fresher(s) identified for support"] if at_risk_count > 0 else ["No high-risk candidates"],
-                    "skill_gaps": [f"Review skill data: {list(skill_summary.keys())[:3]}" if skill_summary else "Expand assessments"],
-                    "top_performers": [f"Top performers among {total} freshers"]
-                }
-                print(f"[ReportingAgent] Generated default detailed_analysis")
+            # ALWAYS override fresher_performance_log and detailed_analysis with real DB data
+            # to prevent LLM from hallucinating names
+            content["fresher_performance_log"] = [
+                {
+                    "name": f["name"],
+                    "department": f["department"],
+                    "progress": f"{f['progress']}%",
+                    "risk_level": f["risk_level"],
+                    "status_comment": "At Risk - Needs Attention" if f["risk_level"] in ("high", "critical") else "On Track"
+                } for f in freshers_details_list
+            ]
+            content["detailed_analysis"] = {
+                "risk_analysis": [
+                    f"{f['name']} ({f['risk_level']})" for f in freshers_details_list if f["risk_level"] in ("high", "critical")
+                ] if at_risk_count > 0 else ["No significant risks identified"],
+                "skill_gaps": content.get("detailed_analysis", {}).get("skill_gaps", [
+                    f"Focus areas: {', '.join(f'{k}' for k, v in list(skill_summary.items())[:3])}" if skill_summary else "Limited data"
+                ]) if isinstance(content.get("detailed_analysis"), dict) else [],
+                "top_performers": [
+                    f"{f['name']} ({f['progress']}%)" for f in sorted(freshers_details_list, key=lambda x: x['progress'], reverse=True)[:3]
+                ]
+            }
+            print(f"[ReportingAgent] Overrode fresher data with real DB names")
                 
         except Exception as e:
             print(f"[ReportingAgent] LLM JSON failure: {e}")
@@ -280,12 +327,14 @@ Start response with {{ and end with }}. No markdown, just raw JSON."""
         
         fresher, user = result
         
-        # Gather all assessment submissions
-        submissions = db.query(Submission, Assessment).join(
+        # Gather only the last 3 assessment submissions per quiz (recent performance)
+        recent_sub_ids = {s.id for s in self._get_recent_submissions(db, user_id=user.id)}
+        all_submissions = db.query(Submission, Assessment).join(
             Assessment, Submission.assessment_id == Assessment.id
         ).filter(Submission.user_id == user.id).order_by(Submission.submitted_at.desc()).all()
+        submissions = [(sub, assess) for sub, assess in all_submissions if sub.id in recent_sub_ids]
         
-        # Parse feedback from each submission
+        # Parse feedback from each submission (last 3 attempts per quiz only)
         assessment_details = []
         for sub, assess in submissions:
             feedback_obj = {}
@@ -338,6 +387,7 @@ Start response with {{ and end with }}. No markdown, just raw JSON."""
         }
         
         prompt = f"""You are a Corporate HR Talent Development Manager creating a comprehensive professional assessment report.
+NOTE: Assessment data reflects ONLY the last {self.RECENT_ATTEMPTS_LIMIT} attempts per quiz to focus on recent performance trends.
 
 CANDIDATE PROFILE:
 {json.dumps(context, indent=2)}
@@ -507,8 +557,8 @@ Be thorough, professional, and constructive. Return ONLY valid JSON."""
         warnings_list = []
         
         for f, u in results:
-            # Get all submissions for this fresher
-            submissions = db.query(Submission).filter(Submission.user_id == u.id).all()
+            # Get only last 3 submissions per quiz for this fresher
+            submissions = self._get_recent_submissions(db, user_id=u.id)
             
             # Check for repeated quiz failures
             warning_info = self.check_repeated_failures(db, f.id)

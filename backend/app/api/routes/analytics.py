@@ -71,11 +71,7 @@ def get_dashboard(manager_id: str = None, db: Session = Depends(get_db), current
         ],
         "top_performers": top_performers,
         "department_stats": list(dept_stats.values()),
-        "recent_activity": [
-            {"id": "1", "type": "assessment", "fresher_name": "Riya Sharma", "action": "Submitted Python Basics Quiz", "details": "Score: 85/100", "timestamp": "2026-02-14T09:30:00Z"},
-            {"id": "2", "type": "schedule", "fresher_name": "Arjun Patel", "action": "Completed Daily Schedule", "details": "5/5 tasks done", "timestamp": "2026-02-14T08:00:00Z"},
-            {"id": "3", "type": "alert", "fresher_name": "Priya Reddy", "action": "At-Risk Alert Generated", "details": "Risk score increased to 65", "timestamp": "2026-02-14T07:00:00Z"},
-        ],
+        "recent_activity": _build_recent_activity(db),
         "agent_metrics": {
             "onboarding_agent": {"name": "Onboarding Agent", "status": "active", "tasks_completed": 145, "tasks_pending": 3, "avg_latency_ms": 1200, "error_rate": 0.02, "last_active": "2026-02-14T10:00:00Z"},
             "assessment_agent": {"name": "Assessment Agent", "status": "active", "tasks_completed": 320, "tasks_pending": 5, "avg_latency_ms": 2500, "error_rate": 0.01, "last_active": "2026-02-14T10:05:00Z"},
@@ -90,6 +86,20 @@ def get_dashboard(manager_id: str = None, db: Session = Depends(get_db), current
                 "generated_at": str(r.generated_at) if r.generated_at else "",
             }
             for r in db.query(Report).order_by(Report.generated_at.desc()).limit(10).all()
+        ],
+        "freshers": [
+            {
+                "id": str(f.id),
+                "name": f"{u.first_name} {u.last_name}".strip() if u else f"Fresher #{f.id}",
+                "department": u.department if u else "General",
+                "week": f.current_week,
+                "progress": f.overall_progress,
+                "riskLevel": f.risk_level,
+                "status": "at_risk" if f.risk_level in ("high", "critical") else ("completed" if f.overall_progress >= 100 else "active"),
+                "skill": (db.query(Skill).filter(Skill.fresher_id == f.id).order_by(Skill.level.desc()).first() or type('S', (), {'name': 'General'})).name,
+            }
+            for f in freshers
+            for u in [db.query(User).filter(User.id == f.user_id).first()]
         ],
     }
 
@@ -116,14 +126,22 @@ def acknowledge_alert(alert_id: str, db: Session = Depends(get_db), current_user
 
 @router.get("/cohort/{cohort_type}/{cohort_value}")
 def get_cohort(cohort_type: str, cohort_value: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = db.query(Fresher, User).join(User, Fresher.user_id == User.id)
+    if cohort_type == "department":
+        query = query.filter(User.department == cohort_value)
+    results = query.all()
+    total = len(results)
+    avg_progress = sum((f.overall_progress or 0) for f, u in results) / total if total else 0
+    at_risk_count = sum(1 for f, u in results if f.risk_level in ("high", "critical"))
+    skills = db.query(Skill.name).distinct().limit(5).all()
     return {
         "cohort_type": cohort_type,
         "cohort_value": cohort_value,
-        "total": 25,
-        "average_progress": 68.5,
-        "at_risk_count": 3,
-        "top_skills": ["Python", "SQL", "Git"],
-        "weak_areas": ["Data Structures", "System Design"],
+        "total": total,
+        "average_progress": round(avg_progress, 1),
+        "at_risk_count": at_risk_count,
+        "top_skills": [s[0] for s in skills],
+        "weak_areas": [],
     }
 
 
@@ -165,3 +183,46 @@ def _alert_dict(a: Alert) -> dict:
         "status": a.status,
         "created_at": str(a.created_at) if a.created_at else "",
     }
+
+
+def _build_recent_activity(db: Session):
+    """Build recent activity list from real DB data (submissions + alerts)."""
+    from app.models.assessment import Submission, Assessment
+    from datetime import datetime
+
+    activity = []
+
+    # Recent submissions
+    recent_subs = (
+        db.query(Submission, User, Assessment)
+        .join(User, Submission.user_id == User.id)
+        .join(Assessment, Submission.assessment_id == Assessment.id)
+        .order_by(Submission.submitted_at.desc())
+        .limit(5)
+        .all()
+    )
+    for sub, user, assess in recent_subs:
+        activity.append({
+            "id": str(sub.id),
+            "type": "assessment",
+            "fresher_name": f"{user.first_name} {user.last_name}",
+            "action": f"Submitted {assess.title}",
+            "details": f"Score: {sub.score or 0}/{assess.max_score}",
+            "timestamp": str(sub.submitted_at) if sub.submitted_at else datetime.utcnow().isoformat(),
+        })
+
+    # Recent alerts
+    recent_alerts = db.query(Alert).order_by(Alert.created_at.desc()).limit(3).all()
+    for a in recent_alerts:
+        activity.append({
+            "id": str(a.id),
+            "type": "alert",
+            "fresher_name": a.fresher_name or "Unknown",
+            "action": f"{a.risk_level.title()} Risk Alert",
+            "details": a.reason or "",
+            "timestamp": str(a.created_at) if a.created_at else datetime.utcnow().isoformat(),
+        })
+
+    # Sort by timestamp descending, return top 10
+    activity.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return activity[:10]

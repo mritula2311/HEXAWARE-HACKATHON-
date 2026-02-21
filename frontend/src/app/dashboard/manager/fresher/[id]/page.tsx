@@ -33,30 +33,23 @@ interface FresherDetail {
 
 const getDemoFresher = (id: string): FresherDetail => ({
   id,
-  name: 'Arun Kumar',
-  email: 'fresher1@maverick.ai',
-  department: 'Engineering',
-  employee_id: 'HEX2025-001',
-  join_date: '2025-01-06',
-  current_week: 4,
-  overall_progress: 72,
+  name: '',
+  email: '',
+  department: '',
+  employee_id: '',
+  join_date: '',
+  current_week: 1,
+  overall_progress: 0,
   risk_level: 'low',
-  risk_score: 15,
+  risk_score: 0,
   training: {
-    quiz: { status: 'completed', score: 85, title: 'State Management Quiz' },
-    coding: { status: 'in_progress', score: null, title: 'Build a Custom Hook' },
-    assignment: { status: 'pending', score: null, title: 'Todo App Project' },
-    certification: { status: 'in_progress', progress: 45, name: 'AWS Cloud Practitioner' },
+    quiz: { status: 'pending', score: null, title: '' },
+    coding: { status: 'pending', score: null, title: '' },
+    assignment: { status: 'pending', score: null, title: '' },
+    certification: { status: 'pending', progress: 0, name: '' },
   },
-  workflow: { profile: true, quiz: true, coding: false, assignment: false, certification: false },
-  skills: [
-    { name: 'Python', level: 72 },
-    { name: 'JavaScript', level: 58 },
-    { name: 'SQL', level: 65 },
-    { name: 'Docker', level: 35 },
-    { name: 'Git', level: 70 },
-    { name: 'REST API', level: 55 },
-  ],
+  workflow: { profile: false, quiz: false, coding: false, assignment: false, certification: false },
+  skills: [],
 });
 
 export default function FresherDetailPage() {
@@ -172,7 +165,7 @@ export default function FresherDetailPage() {
                     <Icon className="w-5 h-5 text-purple-600" />
                     <span className="font-medium text-sm">{item.label}</span>
                   </div>
-                  <span className={cn("px-2 py-1 rounded-full text-xs font-medium capitalize", getStatusColor(item.status))}>{item.status.replace('_', ' ')}</span>
+                  <span className={cn("px-2 py-1 rounded-full text-xs font-medium capitalize", getStatusColor(item.status || 'pending'))}>{(item.status || 'pending').replace('_', ' ')}</span>
                   {item.score !== null && <p className="mt-2 text-2xl font-bold text-gray-900">{item.score}%</p>}
                   <p className="text-xs text-gray-500 mt-1">{item.title}</p>
                 </div>

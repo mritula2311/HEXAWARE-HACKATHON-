@@ -12,47 +12,21 @@ import { useAuth } from '@/lib/auth-context';
 import api from '@/lib/api-service';
 
 const getDemoData = () => ({
-  summary: { totalFreshers: 48, activeFreshers: 42, atRiskCount: 7, completedCount: 3, averageProgress: 52, averageRiskScore: 35 },
-  alerts: [
-    { id: 1, fresherName: 'John Smith', riskLevel: 'critical', riskScore: 85, reason: 'Missed 5 consecutive sessions', createdAt: '2024-01-20T10:30:00Z' },
-    { id: 2, fresherName: 'Sarah Chen', riskLevel: 'high', riskScore: 72, reason: 'Failed 3 assessments in a row', createdAt: '2024-01-20T09:15:00Z' },
-    { id: 3, fresherName: 'Mike Wilson', riskLevel: 'high', riskScore: 68, reason: 'Engagement dropped 40% this week', createdAt: '2024-01-19T16:45:00Z' },
-    { id: 4, fresherName: 'Emily Davis', riskLevel: 'medium', riskScore: 55, reason: 'Behind schedule by 2 days', createdAt: '2024-01-19T14:20:00Z' },
-  ],
-  progressTrend: [
-    { day: 'Mon', avgProgress: 45, completions: 12 }, { day: 'Tue', avgProgress: 47, completions: 15 }, { day: 'Wed', avgProgress: 48, completions: 18 }, { day: 'Thu', avgProgress: 50, completions: 14 }, { day: 'Fri', avgProgress: 52, completions: 20 }, { day: 'Sat', avgProgress: 52, completions: 8 }, { day: 'Sun', avgProgress: 53, completions: 5 },
-  ],
-  riskDistribution: [{ name: 'Low Risk', value: 28, color: '#22c55e' }, { name: 'Medium Risk', value: 13, color: '#eab308' }, { name: 'High Risk', value: 5, color: '#f97316' }, { name: 'Critical', value: 2, color: '#ef4444' }],
-  topPerformers: [
-    { name: 'Alice Thompson', progress: 78, trend: 'up', assessmentScore: 92 }, { name: 'Bob Martinez', progress: 75, trend: 'up', assessmentScore: 88 }, { name: 'Carol White', progress: 72, trend: 'stable', assessmentScore: 85 }, { name: 'David Lee', progress: 70, trend: 'up', assessmentScore: 82 }, { name: 'Eva Brown', progress: 68, trend: 'stable', assessmentScore: 80 },
-  ],
-  departmentStats: [{ name: 'Engineering', freshers: 20, avgProgress: 55, atRisk: 3 }, { name: 'Data Science', freshers: 12, avgProgress: 48, atRisk: 2 }, { name: 'DevOps', freshers: 8, avgProgress: 62, atRisk: 1 }, { name: 'QA', freshers: 8, avgProgress: 50, atRisk: 1 }],
-  recentActivity: [
-    { type: 'assessment', fresher: 'Alice Thompson', action: 'Completed React Advanced Quiz', score: '92%', time: '10 mins ago' },
-    { type: 'schedule', fresher: 'System', action: 'Generated schedules for tomorrow', count: 42, time: '30 mins ago' },
-    { type: 'alert', fresher: 'John Smith', action: 'Risk level escalated to Critical', time: '1 hour ago' },
-    { type: 'curriculum', fresher: 'Sarah Chen', action: 'Curriculum adapted - added remediation', time: '2 hours ago' },
-    { type: 'assessment', fresher: 'Bob Martinez', action: 'Submitted API Integration Challenge', score: '88%', time: '3 hours ago' },
-  ],
-  freshers: [
-    { id: '1', name: 'Alice Thompson', department: 'Engineering', week: 4, progress: 78, riskLevel: 'low', status: 'active', skill: 'React' },
-    { id: '2', name: 'Bob Martinez', department: 'Engineering', week: 3, progress: 75, riskLevel: 'low', status: 'active', skill: 'Node.js' },
-    { id: '3', name: 'John Smith', department: 'Data Science', week: 2, progress: 35, riskLevel: 'critical', status: 'at_risk', skill: 'Python' },
-    { id: '4', name: 'Sarah Chen', department: 'DevOps', week: 3, progress: 42, riskLevel: 'high', status: 'at_risk', skill: 'Docker' },
-    { id: '5', name: 'Mike Wilson', department: 'QA', week: 4, progress: 58, riskLevel: 'medium', status: 'active', skill: 'JavaScript' },
-    { id: '6', name: 'Emily Davis', department: 'Engineering', week: 2, progress: 48, riskLevel: 'medium', status: 'active', skill: 'TypeScript' },
-    { id: '7', name: 'Carol White', department: 'Data Science', week: 5, progress: 72, riskLevel: 'low', status: 'completed', skill: 'Python' },
-    { id: '8', name: 'David Lee', department: 'DevOps', week: 4, progress: 70, riskLevel: 'low', status: 'active', skill: 'AWS' },
-  ],
+  summary: { totalFreshers: 0, activeFreshers: 0, atRiskCount: 0, completedCount: 0, averageProgress: 0, averageRiskScore: 0 },
+  alerts: [] as any[],
+  progressTrend: [] as any[],
+  riskDistribution: [{ name: 'Low Risk', value: 0, color: '#22c55e' }, { name: 'Medium Risk', value: 0, color: '#eab308' }, { name: 'High Risk', value: 0, color: '#f97316' }, { name: 'Critical', value: 0, color: '#ef4444' }],
+  topPerformers: [] as any[],
+  departmentStats: [] as any[],
+  recentActivity: [] as any[],
+  freshers: [] as any[],
   agentMetrics: [
-    { name: 'Onboarding Agent', status: 'active', queue: 3, processed: 127, avgTime: '2.3s', successRate: 98 },
-    { name: 'Assessment Agent', status: 'active', queue: 5, processed: 245, avgTime: '1.8s', successRate: 99 },
-    { name: 'Profile Agent', status: 'active', queue: 2, processed: 89, avgTime: '3.1s', successRate: 97 },
-    { name: 'Reporting Agent', status: 'processing', queue: 1, processed: 42, avgTime: '8.5s', successRate: 100 },
+    { name: 'Onboarding Agent', status: 'active', queue: 0, processed: 0, avgTime: '0s', successRate: 0 },
+    { name: 'Assessment Agent', status: 'active', queue: 0, processed: 0, avgTime: '0s', successRate: 0 },
+    { name: 'Profile Agent', status: 'active', queue: 0, processed: 0, avgTime: '0s', successRate: 0 },
+    { name: 'Reporting Agent', status: 'idle', queue: 0, processed: 0, avgTime: '0s', successRate: 0 },
   ],
-  reports: [
-    { id: '1', title: 'Example Department Report', type: 'department', generated_at: new Date().toISOString() },
-  ],
+  reports: [] as any[],
 });
 
 // Interfaces for type safety
@@ -77,6 +51,12 @@ export default function ManagerDashboard() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [activeReportType, setActiveReportType] = useState<string | null>(null);
   const [reportProgress, setReportProgress] = useState(0);
+
+  // Take Action modal state
+  const [actionModal, setActionModal] = useState<{ open: boolean; fresherName: string; alertId: number | null }>({ open: false, fresherName: '', alertId: null });
+  const [actionType, setActionType] = useState<'warn' | 'fired' | 'appreciate' | null>(null);
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionSent, setActionSent] = useState(false);
 
   const normalizeDashboardData = useCallback((apiData: any) => {
     const demo = getDemoData();
@@ -186,6 +166,27 @@ export default function ManagerDashboard() {
           successRate: Math.round((1 - (m.error_rate || 0)) * 100),
         })) : demo.agentMetrics,
         reports: Array.isArray(apiData.reports) ? apiData.reports : [],
+        freshers: Array.isArray(apiData.freshers)
+          ? apiData.freshers.map((f: any) => ({
+            id: String(f.id),
+            name: String(f.name || 'Fresher'),
+            department: String(f.department || 'General'),
+            week: Number(f.week) || 1,
+            progress: Number(f.progress) || 0,
+            riskLevel: String(f.riskLevel || f.risk_level || 'low'),
+            status: String(f.status || 'active'),
+            skill: String(f.skill || ''),
+          }))
+          : demo.freshers,
+        recentActivity: Array.isArray(apiData.recent_activity)
+          ? apiData.recent_activity.map((a: any) => ({
+            type: a.type || 'assessment',
+            fresher: a.fresher_name || a.fresher || 'System',
+            action: a.action || '',
+            score: a.details || '',
+            time: a.timestamp ? new Date(a.timestamp).toLocaleString() : '',
+          }))
+          : demo.recentActivity,
       };
     }
 
@@ -269,6 +270,10 @@ export default function ManagerDashboard() {
 
       const result = await api.report.generate(type, token, filters);
 
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
       if (result.data) {
         reportId = result.data.id;
         setLastGeneratedReportId(result.data.id);
@@ -280,53 +285,37 @@ export default function ManagerDashboard() {
       // Complete bar
       clearInterval(interval);
       setReportProgress(100);
-      await new Promise(r => setTimeout(r, 500)); // Visual completion
+      await new Promise(r => setTimeout(r, 400)); // Visual completion
 
-      // 2. Download Report
+      // 2. Download Report via direct browser navigation (most reliable)
       if (reportId) {
         try {
-          console.log(`[Manager] Starting download for report ${reportId}, token length: ${token.length}`);
-          const blob = await api.report.download(reportId, token);
+          console.log(`[Manager] Starting download for report ${reportId}`);
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+          const downloadUrl = `${apiUrl}/reports/${reportId}/download?token=${encodeURIComponent(token)}`;
 
-          console.log(`[Manager] Got blob: ${blob.size} bytes, type: ${blob.type}`);
-
-          // Check for JSON error response disguised as blob
-          if (blob.type.includes('application/json') || blob.size < 200) {
-            const text = await blob.text();
-            try {
-              const json = JSON.parse(text);
-              if (json.message || json.detail) {
-                throw new Error(json.message || json.detail || "Server returned an error");
-              }
-            } catch (e) {
-              // Not valid JSON, or no error message, proceed checking type
-              if (blob.type.includes('application/json')) {
-                throw new Error(`Server returned JSON instead of PDF: ${text.substring(0, 100)}`);
-              }
-            }
+          // Use window.open for most reliable download across all browsers
+          const downloadWindow = window.open(downloadUrl, '_blank');
+          
+          // Fallback: if popup was blocked, try iframe approach
+          if (!downloadWindow) {
+            console.log('[Manager] Popup blocked, using iframe fallback');
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = downloadUrl;
+            document.body.appendChild(iframe);
+            setTimeout(() => {
+              try { document.body.removeChild(iframe); } catch(e) {}
+            }, 10000);
           }
 
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.style.display = 'none';
-          a.href = url;
-          // Default filename based on type
-          const isPdf = blob.type === 'application/pdf';
-          const ext = isPdf ? 'pdf' : 'json';
-          a.download = `maverick_${type}_${reportId}.${ext}`;
-          document.body.appendChild(a);
-          a.click();
-
-          // Cleanup with delay for browser compat
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          }, 2000);
-
+          console.log(`[Manager] Download triggered for report ${reportId}`);
         } catch (e: any) {
-          console.error("[Manager] Download error details:", e);
-          alert(`Download failed: ${e.message || "Unknown error"}`);
+          console.error("[Manager] Download error:", e);
+          alert(`Download failed: ${e.message || "Unknown error"}. Use the Download PDF button below to retry.`);
         }
+      } else {
+        alert('Report generated but no report ID returned. Please try again.');
       }
     } catch (err: any) {
       console.error('Report generation failed', err);
@@ -608,34 +597,18 @@ export default function ManagerDashboard() {
 
                         {/* Manual Download Link if just generated */}
                         {lastGeneratedReportId && lastGeneratedType === report.type && !isGeneratingReport && (
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              const ext = 'pdf'; // defaulting to pdf since we know it is
-                              const filename = `maverick_${report.type}_${lastGeneratedReportId}.${ext}`;
-                              fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/reports/${lastGeneratedReportId}/download`, {
-                                headers: { Authorization: `Bearer ${token}` },
-                              }).then(r => {
-                                if (!r.ok) throw new Error(`Server returned ${r.status}`);
-                                return r.blob();
-                              }).then(blob => {
-                                const url = window.URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = filename;
-                                document.body.appendChild(a);
-                                a.click();
-                                a.remove();
-                              }).catch(err => {
-                                console.error(err);
-                                alert(`Download failed: ${err.message}. Please check console.`);
-                              });
-                            }}
-                            className="block mt-2 text-xs text-center text-purple-600 underline hover:text-purple-800"
-                          >
-                            Click here if download didn't start
-                          </a>
+                          <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-xs text-green-700 font-medium text-center mb-1">✓ Report generated successfully!</p>
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/reports/${lastGeneratedReportId}/download?token=${encodeURIComponent(token || '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full flex items-center justify-center space-x-1 py-1.5 px-3 rounded-lg text-xs font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>Download PDF</span>
+                            </a>
+                          </div>
                         )}
                       </div>
                     );
@@ -789,7 +762,7 @@ export default function ManagerDashboard() {
                           <p className="text-gray-600 mb-2">{alert.reason}</p>
                           <p className="text-sm text-gray-500">{new Date(alert.createdAt).toLocaleString()}</p>
                         </div>
-                        <button className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg">Take Action</button>
+                        <button onClick={() => { setActionModal({ open: true, fresherName: alert.fresherName, alertId: alert.id }); setActionType(null); setActionMessage(''); setActionSent(false); }} className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition">Take Action</button>
                       </div>
                     </div>
                   ))}
@@ -805,6 +778,134 @@ export default function ManagerDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Take Action Modal */}
+      {actionModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setActionModal({ open: false, fresherName: '', alertId: null })}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-600 to-indigo-600">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Take Action</h3>
+                <button onClick={() => setActionModal({ open: false, fresherName: '', alertId: null })} className="text-white/80 hover:text-white transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-purple-100 text-sm mt-1">Action for <span className="font-medium text-white">{actionModal.fresherName}</span></p>
+            </div>
+
+            {!actionSent ? (
+              <div className="p-6 space-y-5">
+                {/* Action Type Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Select Action Type</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setActionType('warn')}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        actionType === 'warn'
+                          ? "border-amber-500 bg-amber-50 shadow-md shadow-amber-100"
+                          : "border-gray-200 hover:border-amber-300 hover:bg-amber-50/50"
+                      )}
+                    >
+                      <AlertTriangle className={cn("w-7 h-7", actionType === 'warn' ? "text-amber-600" : "text-amber-400")} />
+                      <span className={cn("text-sm font-semibold", actionType === 'warn' ? "text-amber-700" : "text-gray-600")}>Warn</span>
+                    </button>
+                    <button
+                      onClick={() => setActionType('fired')}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        actionType === 'fired'
+                          ? "border-red-500 bg-red-50 shadow-md shadow-red-100"
+                          : "border-gray-200 hover:border-red-300 hover:bg-red-50/50"
+                      )}
+                    >
+                      <XCircle className={cn("w-7 h-7", actionType === 'fired' ? "text-red-600" : "text-red-400")} />
+                      <span className={cn("text-sm font-semibold", actionType === 'fired' ? "text-red-700" : "text-gray-600")}>Fired</span>
+                    </button>
+                    <button
+                      onClick={() => setActionType('appreciate')}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                        actionType === 'appreciate'
+                          ? "border-green-500 bg-green-50 shadow-md shadow-green-100"
+                          : "border-gray-200 hover:border-green-300 hover:bg-green-50/50"
+                      )}
+                    >
+                      <Award className={cn("w-7 h-7", actionType === 'appreciate' ? "text-green-600" : "text-green-400")} />
+                      <span className={cn("text-sm font-semibold", actionType === 'appreciate' ? "text-green-700" : "text-gray-600")}>Appreciate</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Message Box */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                  <textarea
+                    value={actionMessage}
+                    onChange={e => setActionMessage(e.target.value)}
+                    placeholder={actionType === 'warn' ? 'Describe the warning reason...' : actionType === 'fired' ? 'Provide termination details...' : actionType === 'appreciate' ? 'Write your appreciation note...' : 'Select an action type first...'}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none text-sm text-gray-800 placeholder-gray-400 transition"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setActionModal({ open: false, fresherName: '', alertId: null })}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={!actionType || !actionMessage.trim()}
+                    onClick={() => setActionSent(true)}
+                    className={cn(
+                      "px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition shadow-sm",
+                      !actionType || !actionMessage.trim()
+                        ? "bg-gray-300 cursor-not-allowed"
+                        : actionType === 'warn'
+                        ? "bg-amber-500 hover:bg-amber-600 shadow-amber-200"
+                        : actionType === 'fired'
+                        ? "bg-red-500 hover:bg-red-600 shadow-red-200"
+                        : "bg-green-500 hover:bg-green-600 shadow-green-200"
+                    )}
+                  >
+                    {actionType === 'warn' ? 'Send Warning' : actionType === 'fired' ? 'Confirm Termination' : actionType === 'appreciate' ? 'Send Appreciation' : 'Submit'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Success Confirmation */
+              <div className="p-8 text-center space-y-4">
+                <div className={cn(
+                  "w-16 h-16 rounded-full flex items-center justify-center mx-auto",
+                  actionType === 'warn' ? "bg-amber-100" : actionType === 'fired' ? "bg-red-100" : "bg-green-100"
+                )}>
+                  <CheckCircle2 className={cn(
+                    "w-8 h-8",
+                    actionType === 'warn' ? "text-amber-600" : actionType === 'fired' ? "text-red-600" : "text-green-600"
+                  )} />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900">
+                  {actionType === 'warn' ? 'Warning Sent' : actionType === 'fired' ? 'Termination Recorded' : 'Appreciation Sent'}
+                </h4>
+                <p className="text-sm text-gray-500">
+                  Action has been recorded for <span className="font-medium text-gray-700">{actionModal.fresherName}</span>
+                </p>
+                <button
+                  onClick={() => setActionModal({ open: false, fresherName: '', alertId: null })}
+                  className="mt-2 px-6 py-2.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,27 +27,20 @@ interface ProfileData {
 }
 
 const getDemoProfile = (): ProfileData => ({
-  first_name: 'Arun',
-  last_name: 'Kumar',
-  email: 'fresher1@maverick.ai',
-  department: 'Engineering',
-  employee_id: 'HEX2025-001',
-  join_date: '2025-01-06',
-  education: 'B.Tech',
-  degree: 'Computer Science',
-  university: 'Anna University',
-  graduation_year: 2024,
-  certifications: ['AWS Cloud Practitioner', 'Python Certified'],
+  first_name: '',
+  last_name: '',
+  email: '',
+  department: '',
+  employee_id: '',
+  join_date: '',
+  education: '',
+  degree: '',
+  university: '',
+  graduation_year: 0,
+  certifications: [],
   preferred_learning_style: 'hands-on',
   daily_capacity_hours: 6,
-  skills: [
-    { name: 'Python', level: 72 },
-    { name: 'JavaScript', level: 58 },
-    { name: 'SQL', level: 65 },
-    { name: 'Docker', level: 35 },
-    { name: 'REST API', level: 55 },
-    { name: 'Git', level: 70 },
-  ],
+  skills: [],
 });
 
 export default function FresherProfilePage() {
@@ -62,10 +55,10 @@ export default function FresherProfilePage() {
     if (user) {
       const merged = {
         ...getDemoProfile(),
-        first_name: user.first_name || getDemoProfile().first_name,
-        last_name: user.last_name || getDemoProfile().last_name,
-        email: user.email || getDemoProfile().email,
-        department: user.department || getDemoProfile().department,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+        department: user.department || '',
       };
       setProfile(merged);
       setEditForm(merged);
